@@ -19,6 +19,9 @@ import { StockNotificationsModule } from './stock-notifications/stock-notificati
 import { AccessoryPurchasesModule } from './accessory-purchases/accessory-purchases.module';
 import { AccountsReceivableModule } from './accounts-receivable/accounts-receivable.module';
 import { CashFlowModule } from './cash-flow/cash-flow.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchasesModule } from './purchases/purchases.module';
+import { WarrantiesModule } from './warranties/warranties.module';
 
 @Module({
   imports: [
@@ -39,6 +42,9 @@ import { CashFlowModule } from './cash-flow/cash-flow.module';
     AccessoryPurchasesModule,
     AccountsReceivableModule,
     CashFlowModule,
+    SuppliersModule,
+    PurchasesModule,
+    WarrantiesModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

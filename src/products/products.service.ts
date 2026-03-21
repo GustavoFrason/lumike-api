@@ -19,7 +19,7 @@ export class ProductsService {
    * Cria um novo produto
    */
   async create(createProductDto: CreateProductDto & { existingProductId?: number }) {
-    const { existingProductId, ...productData } = createProductDto as any;
+    const { existingProductId, ...productData } = createProductDto;
 
     // If existingProductId is provided, UPDATE instead of CREATE
     if (existingProductId) {
@@ -66,6 +66,7 @@ export class ProductsService {
         cost_price: productData.cost_price || 0,
         purchase_date: productData.purchase_date,
         category_id: productData.category_id,
+        supplier_id: productData.supplier_id,
         colecao_id: productData.colecao_id,
         collection: productData.collection,
         current_stock: productData.current_stock || 0,
@@ -220,6 +221,7 @@ export class ProductsService {
         current_stock: updateProductDto.current_stock,
         min_stock: updateProductDto.min_stock,
         category_id: updateProductDto.category_id,
+        supplier_id: updateProductDto.supplier_id,
         colecao_id: updateProductDto.colecao_id,
         collection: updateProductDto.collection,
         is_active: updateProductDto.is_active,

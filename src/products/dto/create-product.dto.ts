@@ -49,6 +49,10 @@ export class CreateProductDto {
   category_id?: number;
 
   @IsOptional()
+  @IsNumber()
+  supplier_id?: number;
+
+  @IsOptional()
   @IsString()
   colecao_id?: string; // UUID (Mantendo legado se necessário)
 

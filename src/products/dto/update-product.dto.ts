@@ -54,6 +54,10 @@ export class UpdateProductDto {
   category_id?: number;
 
   @IsOptional()
+  @IsNumber()
+  supplier_id?: number;
+
+  @IsOptional()
   @IsString()
   colecao_id?: string; // UUID
 

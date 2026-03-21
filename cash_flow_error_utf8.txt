@@ -1,0 +1,50 @@
+﻿node.exe : [31m[Nest] 
+28668  - [39m16/01/2026, 
+22:33:21 [31m  
+ERROR[39m [38;5;3m[Excep
+tionsHandler] [39mError: 
+Erro ao buscar fluxo de 
+caixa: Could not find the 
+table 'public.cash_flow' 
+in the schema cache
+No linha:1 caractere:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (  
+  [31m[Nest] 286...he s   
+ chema cache:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+    at 
+CashFlowService.findAll [
+90m(C:\desenvolvimento\pes
+soais\lumike\lumike-api\[
+39msrc\cash-flow\cash-flow
+.service.ts:49:19[90m)[3
+9m
+[90m    at 
+processTicksAndRejections 
+(node:internal/process/tas
+k_queues:103:5)[39m
+    at [90mC:\desenvolvim
+ento\pessoais\lumike\lumik
+e-api\[39mnode_modules\[
+4m@nestjs\core[24m\router
+\router-execution-context.
+js:46:28
+    at [90mC:\desenvolvim
+ento\pessoais\lumike\lumik
+e-api\[39mnode_modules\[
+4m@nestjs\core[24m\router
+\router-proxy.js:9:17
+  console.error
+    FAILED /cash-flow: Status 500 {
