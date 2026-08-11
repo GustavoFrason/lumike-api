@@ -1263,6 +1263,14 @@ export interface Database {
         };
         Returns: number;
       };
+      fn_import_purchase_excel: {
+        Args: {
+          p_items: Json | null;
+          p_notes: string | null;
+          p_supplier_id: number | null;
+        };
+        Returns: number;
+      };
       fn_transfer_stock: {
         Args: {
           p_from_user_id: number | null;
