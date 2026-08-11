@@ -35,23 +35,14 @@ describe('ProductsService', () => {
   describe('create', () => {
     const createDto: CreateProductDto = {
       name: 'Test Product',
-      sku: 'TEST-SKU',
+      sku2: 'FORNECEDOR-SKU',
       short_description: 'Test Product',
       price: 100,
       purchase_date: '2026-01-01',
       current_stock: 10,
     };
 
-    it('should throw error if SKU already exists', async () => {
-      mockSupabase.maybeSingle.mockResolvedValue({ data: { id: 1 } });
-
-      await expect(service.create(createDto)).rejects.toThrow(
-        "Produto com SKU 'TEST-SKU' já existe!",
-      );
-    });
-
-    it('should create product if SKU is unique', async () => {
-      mockSupabase.maybeSingle.mockResolvedValue({ data: null });
+    it('creates the product without checking sku duplicity (sku vira o id via trigger)', async () => {
       mockSupabase.single.mockResolvedValue({
         data: { id: 2, ...createDto },
         error: null,

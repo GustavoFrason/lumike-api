@@ -8,7 +8,6 @@ import {
   Injectable,
   Inject,
   NotFoundException,
-  BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -50,21 +49,11 @@ export class ProductsService {
       });
     }
 
-    // Normal creation flow - check if SKU already exists
-    if (productData.sku) {
-      const { data: existing } = await this.supabase
-        .from('products')
-        .select('id')
-        .eq('sku', productData.sku)
-        .maybeSingle();
-
-      if (existing) {
-        throw new BadRequestException(
-          `Produto com SKU '${productData.sku}' já existe!`,
-        );
-      }
-    }
-
+    // Normal creation flow. `sku` não é mais checado por duplicidade aqui:
+    // não é mais digitado pelo usuário (vira o `id` autoincrementado via
+    // trigger fn_generate_product_sku, sempre único por natureza). Repetir
+    // o `sku2` (SKU do fornecedor) é um caso válido — é o que aciona o
+    // fluxo de "produto existente, somar ao estoque" no admin.
     const { data: productDataResult, error } = await this.supabase
       .from('products')
       .insert({

@@ -122,9 +122,11 @@ describe('ProductsImportService', () => {
 
       expect(result.created).toBe(1);
       expect(mockSupabase.from).toHaveBeenCalledWith('products');
+      // item.sku é o código lido do XML/planilha (código do fornecedor) —
+      // vai pro nosso sku2; sku fica pra o trigger preencher com o id.
       expect(mockSupabase.insert).toHaveBeenCalledWith(
         expect.objectContaining({
-          sku: 'NEW1',
+          sku2: 'NEW1',
           current_stock: 5,
         }),
       );

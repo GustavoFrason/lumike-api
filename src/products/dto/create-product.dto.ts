@@ -10,13 +10,16 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
+  // Opcional de propósito: não é mais digitado no admin — vira o próprio
+  // `id` (auto-incremento) via trigger fn_generate_product_sku quando vem
+  // vazio. Continua aceitando um valor explícito (import legado, etc.).
   @IsOptional()
   @IsString()
   sku?: string;
 
-  @IsOptional()
   @IsString()
-  sku2?: string; // Novo campo opcional
+  @IsNotEmpty({ message: 'SKU Zarpellon (código do fornecedor) é obrigatório' })
+  sku2: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })

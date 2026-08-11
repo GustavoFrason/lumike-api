@@ -170,10 +170,13 @@ export class ProductsImportService {
     const items: ImportItem[] = [];
 
     for (const raw of rawItems) {
+      // raw.sku é o código lido da NF-e/planilha do fornecedor (cProd /
+      // CÓD. PROD) — corresponde ao nosso `sku2` (SKU Zarpellon), não ao
+      // `sku` interno (que agora é só o id autoincrementado da plataforma).
       const { data: existing } = await this.supabase
         .from('products')
         .select('id, name, current_stock')
-        .eq('sku', raw.sku)
+        .eq('sku2', raw.sku)
         .maybeSingle();
 
       items.push({
@@ -214,7 +217,7 @@ export class ProductsImportService {
           // schema (bug pré-existente: essa importação sempre falharia sem
           // eles — só ficou visível ao tipar o client do Supabase).
           const { error } = await this.supabase.from('products').insert({
-            sku: item.sku,
+            sku2: item.sku,
             name: item.name_xml,
             short_description: item.name_xml.slice(0, 40),
             purchase_date: new Date().toISOString().slice(0, 10),
