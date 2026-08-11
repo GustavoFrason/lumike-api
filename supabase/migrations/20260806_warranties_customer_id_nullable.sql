@@ -1,0 +1,12 @@
+-- ==========================================================================
+-- MIGRATION: warranties.customer_id vira opcional
+-- Data: 06/08/2026
+--
+-- Bug encontrado ao tipar o client do Supabase: a coluna é NOT NULL, mas o
+-- frontend (WarrantyModal.tsx) manda `customer_id: undefined` sempre que
+-- origin === 'stock' (garantia de peça em estoque, não vendida a ninguém
+-- ainda) — ou seja, criar uma garantia de origem "stock" já falha hoje
+-- contra o schema atual (violação de NOT NULL). Esta migration alinha o
+-- banco com o comportamento que o frontend sempre teve a intenção de ter.
+-- ==========================================================================
+ALTER TABLE warranties ALTER COLUMN customer_id DROP NOT NULL;

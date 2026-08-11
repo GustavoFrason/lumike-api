@@ -26,3 +26,38 @@ export class StockExitDto {
   reference?: string; // Ex: 'order:123'
 }
 
+export class StockTransferDto {
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(1)
+  quantity: number;
+
+  @IsOptional()
+  @IsNumber()
+  from_user_id?: number; // null = Central
+
+  @IsOptional()
+  @IsNumber()
+  to_user_id?: number; // null = Central
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+/** Conferência física de estoque: quanto foi contado numa localidade. */
+export class StockAdjustmentDto {
+  @IsOptional()
+  @IsNumber()
+  user_id?: number | null; // null = Central, número = revendedor(a)
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Min(0, { message: 'Quantidade contada não pode ser negativa' })
+  counted_quantity: number;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Motivo/observação da conferência é obrigatório' })
+  reason: string;
+}
+

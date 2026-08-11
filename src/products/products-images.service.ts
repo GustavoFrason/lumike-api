@@ -4,15 +4,18 @@
  * Responsável por operações com imagens de produtos no Supabase Storage.
  */
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 
 @Injectable()
 export class ProductsImagesService {
   private readonly BUCKET_NAME = 'produtos';
+  private readonly logger = new Logger(ProductsImagesService.name);
 
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
   ) {}
 
   /**
@@ -43,7 +46,9 @@ export class ProductsImagesService {
     // Obtém a URL pública da imagem
     const {
       data: { publicUrl },
-    } = this.supabase.storage.from(this.BUCKET_NAME).getPublicUrl(storageFileName);
+    } = this.supabase.storage
+      .from(this.BUCKET_NAME)
+      .getPublicUrl(storageFileName);
 
     // Registra a imagem na tabela imagens_produto
     const { data: imageData, error: dbError } = await this.supabase
@@ -58,7 +63,9 @@ export class ProductsImagesService {
 
     if (dbError) {
       // Se falhar ao registrar no DB, tenta remover o arquivo do storage
-      await this.supabase.storage.from(this.BUCKET_NAME).remove([storageFileName]);
+      await this.supabase.storage
+        .from(this.BUCKET_NAME)
+        .remove([storageFileName]);
       throw new Error(`Erro ao registrar imagem: ${dbError.message}`);
     }
 
@@ -99,7 +106,8 @@ export class ProductsImagesService {
 
     // Extrai o nome do arquivo da URL
     const urlParts = image.url.split('/');
-    const fileName = urlParts[urlParts.length - 2] + '/' + urlParts[urlParts.length - 1];
+    const fileName =
+      urlParts[urlParts.length - 2] + '/' + urlParts[urlParts.length - 1];
 
     // Remove do Storage
     const { error: storageError } = await this.supabase.storage
@@ -107,7 +115,9 @@ export class ProductsImagesService {
       .remove([fileName]);
 
     if (storageError) {
-      console.warn(`Erro ao remover arquivo do storage: ${storageError.message}`);
+      this.logger.warn(
+        `Erro ao remover arquivo do storage: ${storageError.message}`,
+      );
     }
 
     // Remove do banco de dados
@@ -163,4 +173,3 @@ export class ProductsImagesService {
     return data;
   }
 }
-

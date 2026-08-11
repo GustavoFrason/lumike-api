@@ -17,13 +17,17 @@ import {
   ParseBoolPipe,
 } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
+/** Gestão de catálogo: só admin/gestor. Leitura pública usa @Public() por rota. */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('categories')
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) { }
+  constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
   create(@Body() createCategoryDto: CreateCategoryDto) {
@@ -32,9 +36,7 @@ export class CategoriesController {
 
   @Public()
   @Get()
-  findAll(
-    @Query('is_active', ParseBoolPipe) isActive?: boolean,
-  ) {
+  findAll(@Query('is_active', ParseBoolPipe) isActive?: boolean) {
     return this.categoriesService.findAll(isActive);
   }
 
@@ -68,4 +70,3 @@ export class CategoriesController {
     return this.categoriesService.delete(id);
   }
 }
-

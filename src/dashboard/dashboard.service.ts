@@ -2,17 +2,69 @@
  * DashboardService
  * --------------------
  * Responsável por buscar dados do dashboard.
+ *
+ * O saldo "moderno" (cash_flow) é sempre obtido via CashFlowService — fonte
+ * única de verdade para saldo de caixa (ver cash-flow.service.ts) — em vez
+ * de cada service reconsultar a tabela `cash_flow` cru e reimplementar a
+ * mesma soma.
+ *
+ * A lógica de faturamento "legado" (pedidos anteriores à migração para
+ * cash_flow, ver MIGRATION_DATE) é isolada em fetchLegacyData/
+ * legacyOrderContribution, usados tanto por getKPIs quanto por
+ * getRevenueHistory — antes era o mesmo cálculo copiado duas vezes.
  */
 
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
+import { CashFlowService } from '../cash-flow/cash-flow.service';
+
+interface LegacyOrderRow {
+  id: number;
+  created_at: string;
+  total_amount: number;
+  boca_paid_now?: number | null;
+  payment_status?: string | null;
+  status: string;
+}
+
+interface LegacyPaymentRow {
+  order_id: number;
+  amount: number;
+  created_at: string;
+  type?: string;
+}
+
+interface TopSellerItemRow {
+  product_id: number;
+  quantity: number | null;
+  products: { name: string } | null;
+}
+
+interface TopSellerAccumulator {
+  product_id: number;
+  name: string;
+  qty_90d: number;
+}
 
 @Injectable()
 export class DashboardService {
-  constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
-  ) { }
+  private readonly logger = new Logger(DashboardService.name);
 
+  constructor(
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
+    private readonly cashFlowService: CashFlowService,
+  ) {}
+
+  /**
+   * Ponto de corte da migração para o sistema de fluxo de caixa (cash_flow).
+   * Pedidos/pagamentos anteriores a essa data não têm lançamento em
+   * cash_flow e precisam ser somados a partir de `orders`/`order_payments`
+   * diretamente — esse é o único motivo de existir a lógica "legada" abaixo.
+   * TODO: remover esse bridge quando o histórico pré-migração deixar de ser
+   * relevante para os KPIs (ex: após 1 ano rolante).
+   */
   private readonly MIGRATION_DATE = '2026-01-10T00:00:00Z';
 
   /**
@@ -22,59 +74,34 @@ export class DashboardService {
     return this.calculateKPIs();
   }
 
-  /**
-   * Calcula KPIs manualmente (Hybrid Logic: Legacy + Cash Flow)
-   */
   private async calculateKPIs() {
-    // 1. New Source: Cash Flow (Real Money)
-    const { data: cashFlow } = await this.supabase
-      .from('cash_flow')
-      .select('type, amount');
-
-    const cashFlowNet = cashFlow?.reduce((sum, entry) => {
-      return entry.type === 'IN' ? sum + Number(entry.amount) : sum - Number(entry.amount);
-    }, 0) || 0;
-
-    // 2. Legacy Source: Orders/Payments created BEFORE migration
-    const { data: legacyOrders } = await this.supabase
-      .from('orders')
-      .select('id, total_amount, boca_paid_now, payment_status, status')
-      .lt('created_at', this.MIGRATION_DATE)
-      .neq('status', 'cancelled');
-
-    const { data: legacyPayments } = await this.supabase
-      .from('order_payments')
-      .select('order_id, amount')
-      .lt('created_at', this.MIGRATION_DATE);
-
-    const legacyOrdersWithPayments = new Set(legacyPayments?.map(p => p.order_id) || []);
-
-    const legacyTotal = (legacyOrders?.reduce((sum, order) => {
-      if (order.boca_paid_now) sum += Number(order.boca_paid_now);
-
-      const isPaid = order.payment_status === 'pago' ||
-        (!order.payment_status && (order.status === 'paid' || order.status === 'completed'));
-
-      if (isPaid && !order.boca_paid_now && !legacyOrdersWithPayments.has(order.id)) {
-        sum += Number(order.total_amount || 0);
-      }
-      return sum;
-    }, 0) || 0) + (legacyPayments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0);
+    const [{ balance: cashFlowNet }, legacyTotal] = await Promise.all([
+      this.cashFlowService.getBalance(),
+      this.calculateLegacyTotal(),
+    ]);
 
     const totalVendas = cashFlowNet + legacyTotal;
 
-    // Order Count (excluding cancelled)
     const { data: ordersCountData } = await this.supabase
       .from('orders')
       .select('id')
       .neq('status', 'cancelled');
-
     const totalPedidosCount = ordersCountData?.length || 0;
 
-    // Remaining KPIs
-    const { count: produtosAtivos } = await this.supabase.from('products').select('*', { count: 'exact', head: true }).eq('is_active', true);
-    const { count: clientes } = await this.supabase.from('customers').select('*', { count: 'exact', head: true });
-    const { count: leadsCount } = await this.supabase.from('leads').select('*', { count: 'exact', head: true });
+    const { count: produtosAtivos } = await this.supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true);
+    const { count: clientes } = await this.supabase
+      .from('customers')
+      .select('*', { count: 'exact', head: true });
+    const { count: leadsCount } = await this.supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true });
+    const { count: leadsConvertidos } = await this.supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_used', true);
 
     return {
       total_vendas: totalVendas,
@@ -83,7 +110,14 @@ export class DashboardService {
       clientes: clientes || 0,
       total_leads: leadsCount || 0,
       ticket_medio: totalPedidosCount > 0 ? totalVendas / totalPedidosCount : 0,
-      taxa_conversao: (leadsCount || 0) > 0 ? (totalPedidosCount / (leadsCount || 1)) * 100 : 0
+      // % de leads que de fato usaram o cupom numa venda (leads.is_used).
+      // Antes era total_pedidos / leads — número sem sentido, já que a
+      // maioria das vendas é PDV/balcão e não vem de lead nenhum (dava
+      // 1500% com 15 pedidos e 1 lead, achado auditando o Dashboard).
+      taxa_conversao:
+        (leadsCount || 0) > 0
+          ? ((leadsConvertidos || 0) / (leadsCount || 1)) * 100
+          : 0,
     };
   }
 
@@ -96,42 +130,62 @@ export class DashboardService {
       .select('*')
       .limit(limit);
 
-    if (error) return this.calculateTopSellers(limit);
+    if (error) {
+      this.logger.warn(
+        `vw_top_sellers_90d indisponível, recalculando via order_items: ${error.message}`,
+      );
+      return this.calculateTopSellers(limit);
+    }
     return data || [];
   }
 
   private async calculateTopSellers(limit: number) {
     const { data } = await this.supabase
       .from('order_items')
-      .select(`
+      .select(
+        `
         product_id,
         quantity,
         orders!inner(created_at, status),
         products!inner(name)
-      `)
-      .gte('orders.created_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
-      .in('orders.status', ['paid', 'completed', 'parcelado_boca']); // Added new status
+      `,
+      )
+      .gte(
+        'orders.created_at',
+        new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+      )
+      .in('orders.status', ['paid', 'completed', 'parcelado_boca']);
 
     if (!data) return [];
 
-    const grouped = data.reduce((acc: any, item) => {
-      const productId = item.product_id;
-      if (!acc[productId]) {
-        acc[productId] = {
-          product_id: productId,
-          name: (item.products as any)?.name || 'Produto',
-          qty_90d: 0,
-        };
-      }
-      acc[productId].qty_90d += item.quantity || 0;
-      return acc;
-    }, {});
+    const rows = data as unknown as TopSellerItemRow[];
+    const grouped = rows.reduce<Record<number, TopSellerAccumulator>>(
+      (acc, item) => {
+        const productId = item.product_id;
+        if (!acc[productId]) {
+          acc[productId] = {
+            product_id: productId,
+            name: item.products?.name || 'Produto',
+            qty_90d: 0,
+          };
+        }
+        acc[productId].qty_90d += item.quantity || 0;
+        return acc;
+      },
+      {},
+    );
 
-    return Object.values(grouped).sort((a: any, b: any) => b.qty_90d - a.qty_90d).slice(0, limit);
+    return Object.values(grouped)
+      .sort((a, b) => b.qty_90d - a.qty_90d)
+      .slice(0, limit);
   }
 
   async getLowStockAlerts(limit: number = 10) {
-    const { data: products } = await this.supabase.from('products').select('id, name, sku, current_stock, min_stock').eq('is_active', true).limit(limit);
+    const { data: products } = await this.supabase
+      .from('products')
+      .select('id, name, sku, current_stock, min_stock')
+      .eq('is_active', true)
+      .limit(limit);
     const lowStock = (products || [])
       .filter((p) => p.current_stock < p.min_stock)
       .map((p) => ({
@@ -148,63 +202,47 @@ export class DashboardService {
   }
 
   /**
-   * Busca histórico de faturamento (Hybrid Logic)
+   * Busca histórico de faturamento dos últimos 30 dias (cash_flow moderno +
+   * bridge legado para o período que ainda cai antes de MIGRATION_DATE).
    */
   async getRevenueHistory() {
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const thirtyDaysAgo = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const dailyRevenue: Record<string, number> = {};
 
-    // 1. Cash Flow Entries (Modern)
     const { data: cashFlow } = await this.supabase
       .from('cash_flow')
       .select('type, amount, created_at')
       .gte('created_at', thirtyDaysAgo);
 
-    // 2. Legacy Orders/Payments
-    const { data: orders } = await this.supabase
-      .from('orders')
-      .select('id, created_at, total_amount, boca_paid_now, payment_status, status')
-      .lt('created_at', this.MIGRATION_DATE)
-      .gte('created_at', thirtyDaysAgo)
-      .neq('status', 'cancelled');
-
-    const { data: payments } = await this.supabase
-      .from('order_payments')
-      .select('order_id, amount, created_at, type')
-      .lt('created_at', this.MIGRATION_DATE)
-      .gte('created_at', thirtyDaysAgo);
-
-    const legacyOrdersWithPayments = new Set(payments?.map(p => p.order_id) || []);
-
-    const dailyRevenue: Record<string, number> = {};
-
-    // Process Cash Flow
-    cashFlow?.forEach(entry => {
-      const date = new Date(entry.created_at).toISOString().split('T')[0];
+    cashFlow?.forEach((entry) => {
+      const date = new Date(entry.created_at ?? Date.now())
+        .toISOString()
+        .split('T')[0];
       const val = Number(entry.amount);
-      if (entry.type === 'IN') dailyRevenue[date] = (dailyRevenue[date] || 0) + val;
-      else dailyRevenue[date] = (dailyRevenue[date] || 0) - val;
+      dailyRevenue[date] =
+        (dailyRevenue[date] || 0) + (entry.type === 'IN' ? val : -val);
     });
 
-    // Process Legacy Orders
-    orders?.forEach(order => {
-      const date = new Date(order.created_at).toISOString().split('T')[0];
-      if (order.boca_paid_now) dailyRevenue[date] = (dailyRevenue[date] || 0) + Number(order.boca_paid_now);
+    const { orders, payments, paidOrderIds } =
+      await this.fetchLegacyData(thirtyDaysAgo);
 
-      const isPaid = order.payment_status === 'pago' || (!order.payment_status && (order.status === 'paid' || order.status === 'completed'));
-      if (isPaid && !order.boca_paid_now && !legacyOrdersWithPayments.has(order.id)) {
-        dailyRevenue[date] = (dailyRevenue[date] || 0) + Number(order.total_amount || 0);
+    orders.forEach((order) => {
+      const date = new Date(order.created_at).toISOString().split('T')[0];
+      const contribution = this.legacyOrderContribution(order, paidOrderIds);
+      if (contribution !== 0) {
+        dailyRevenue[date] = (dailyRevenue[date] || 0) + contribution;
       }
     });
 
-    // Process Legacy Payments
-    payments?.forEach(p => {
+    payments.forEach((p) => {
       const date = new Date(p.created_at).toISOString().split('T')[0];
       const val = Number(p.amount);
-      if (p.type === 'refund') dailyRevenue[date] = (dailyRevenue[date] || 0) - val;
-      else dailyRevenue[date] = (dailyRevenue[date] || 0) + val;
+      dailyRevenue[date] =
+        (dailyRevenue[date] || 0) + (p.type === 'refund' ? -val : val);
     });
 
-    // Fill Gaps
     const history: { date: string; revenue: number }[] = [];
     const now = new Date();
     for (let i = 29; i >= 0; i--) {
@@ -213,10 +251,88 @@ export class DashboardService {
       const dateStr = d.toISOString().split('T')[0];
       history.push({
         date: dateStr,
-        revenue: Number(Number(dailyRevenue[dateStr] || 0).toFixed(2))
+        revenue: Number(Number(dailyRevenue[dateStr] || 0).toFixed(2)),
       });
     }
 
     return history;
+  }
+
+  /** Soma total do bridge legado (sem limite de data) — usado só pelos KPIs. */
+  private async calculateLegacyTotal(): Promise<number> {
+    const { orders, payments, paidOrderIds } = await this.fetchLegacyData();
+    const ordersTotal = orders.reduce(
+      (sum, order) => sum + this.legacyOrderContribution(order, paidOrderIds),
+      0,
+    );
+    const paymentsTotal = payments.reduce(
+      (sum, p) => sum + Number(p.amount),
+      0,
+    );
+    return ordersTotal + paymentsTotal;
+  }
+
+  /** Busca pedidos e pagamentos anteriores a MIGRATION_DATE, opcionalmente a partir de `sinceDate`. */
+  private async fetchLegacyData(sinceDate?: string): Promise<{
+    orders: LegacyOrderRow[];
+    payments: LegacyPaymentRow[];
+    paidOrderIds: Set<number>;
+  }> {
+    let ordersQuery = this.supabase
+      .from('orders')
+      .select(
+        'id, created_at, total_amount, boca_paid_now, payment_status, status',
+      )
+      .lt('created_at', this.MIGRATION_DATE)
+      .neq('status', 'cancelled');
+    if (sinceDate) ordersQuery = ordersQuery.gte('created_at', sinceDate);
+
+    let paymentsQuery = this.supabase
+      .from('order_payments')
+      .select('order_id, amount, created_at, type')
+      .lt('created_at', this.MIGRATION_DATE);
+    if (sinceDate) paymentsQuery = paymentsQuery.gte('created_at', sinceDate);
+
+    const [{ data: orders }, { data: payments }] = await Promise.all([
+      ordersQuery,
+      paymentsQuery,
+    ]);
+    // order_id é nullable no schema (pagamento avulso sem pedido vinculado);
+    // filtramos antes de montar o Set<number>.
+    const paidOrderIds = new Set(
+      (payments ?? [])
+        .map((p) => p.order_id)
+        .filter((id): id is number => id !== null),
+    );
+
+    return {
+      orders: orders ?? [],
+      payments: (payments ?? []) as LegacyPaymentRow[],
+      paidOrderIds,
+    };
+  }
+
+  /**
+   * Valor que um pedido "legado" contribui para o faturamento: o sinal
+   * (boca_paid_now) sempre conta; o valor total só entra se o pedido está
+   * marcado como pago, não tinha sinal, e ainda não tem um registro em
+   * order_payments (evita contar o mesmo valor duas vezes).
+   */
+  private legacyOrderContribution(
+    order: LegacyOrderRow,
+    paidOrderIds: Set<number>,
+  ): number {
+    let contribution = 0;
+    if (order.boca_paid_now) contribution += Number(order.boca_paid_now);
+
+    const isPaid =
+      order.payment_status === 'pago' ||
+      (!order.payment_status &&
+        (order.status === 'paid' || order.status === 'completed'));
+
+    if (isPaid && !order.boca_paid_now && !paidOrderIds.has(order.id)) {
+      contribution += Number(order.total_amount || 0);
+    }
+    return contribution;
   }
 }

@@ -19,6 +19,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 import { ProductsService } from './products.service';
 import { ProductsImportService, ImportItem } from './products-import.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -26,12 +28,14 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsFilterDto } from './dto/get-products-filter.dto';
 import { FileValidationPipe } from '../common/pipes/file-validation.pipe';
 
+/** Gestão de catálogo: só admin/gestor. Rotas de leitura pública (vitrine) usam @Public() individualmente. */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('products')
 export class ProductsController {
   constructor(
     private readonly productsService: ProductsService,
     private readonly importService: ProductsImportService,
-  ) { }
+  ) {}
 
   @Post('import/xml')
   @UseInterceptors(FileInterceptor('file'))
@@ -111,7 +115,7 @@ export class ProductsController {
   }
 
   @Patch('bulk-status')
-  async bulkStatusUpdate(@Body() body: { ids: number[], is_active: boolean }) {
+  async bulkStatusUpdate(@Body() body: { ids: number[]; is_active: boolean }) {
     if (body.is_active) {
       return this.productsService.activateMany(body.ids);
     } else {
@@ -142,4 +146,3 @@ export class ProductsController {
     return this.productsService.delete(id);
   }
 }
-

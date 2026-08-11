@@ -478,11 +478,18 @@ INSERT INTO roles(name) VALUES ('vendedor')
 ON CONFLICT (name) DO NOTHING;
 
 -- Usuário admin (ajuste a senha se desejar)
+-- A senha é hasheada com bcrypt (via pgcrypto) na inserção — o backend só
+-- sabe comparar hash (bcrypt.compare em AuthService.validateUser), então
+-- gravar em texto puro aqui deixaria esse usuário permanentemente
+-- inutilizável para login (bug real encontrado ao testar login contra um
+-- banco resetado do zero: "Senha incorreta" mesmo com a senha certa).
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower('admin@lumike.com')) THEN
     INSERT INTO users(name, email, password, role_id, is_active)
-    VALUES ('Administrador', 'admin@lumike.com', '123456',
+    VALUES ('Administrador', 'admin@lumike.com', crypt('123456', gen_salt('bf', 10)),
       (SELECT id FROM roles WHERE name='admin'), TRUE);
   END IF;
 END$$;

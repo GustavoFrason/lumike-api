@@ -26,7 +26,9 @@ export default tseslint.config(
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off',
+      // Era 'off' — virou 'warn' para sinalizar a dívida técnica restante
+      // (ver módulos ainda com `any` em dados de leitura) sem quebrar o build.
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       "prettier/prettier": ["error", { endOfLine: "auto" }],

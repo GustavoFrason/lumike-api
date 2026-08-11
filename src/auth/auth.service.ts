@@ -5,17 +5,28 @@
  * Faz consulta à tabela "users" no Supabase.
  */
 
-import { Injectable, UnauthorizedException, Inject, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  Inject,
+  BadRequestException,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
     private readonly jwtService: JwtService,
-  ) { }
+  ) {}
 
   /** Valida usuário com base em email e senha */
   async validateUser(email: string, senha: string) {
@@ -28,7 +39,10 @@ export class AuthService {
       .maybeSingle();
 
     if (userError) {
-      console.error('Erro ao buscar usuário:', userError);
+      this.logger.error(
+        `Erro ao buscar usuário: ${userError.message}`,
+        userError,
+      );
       throw new UnauthorizedException('Erro ao buscar usuário');
     }
 
@@ -43,7 +57,7 @@ export class AuthService {
     }
 
     // Busca o role separadamente se necessário
-    let roleName = null;
+    let roleName: string | null = null;
     if (user.role_id) {
       const { data: role, error: roleError } = await this.supabase
         .from('roles')
@@ -75,7 +89,7 @@ export class AuthService {
         sub: user.id,
         email: user.email,
         role: roleName,
-        role_id: user.role_id
+        role_id: user.role_id,
       };
 
       const token = await this.jwtService.signAsync(payload, {
@@ -94,7 +108,10 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error('Erro no login:', error);
+      this.logger.error(
+        `Erro no login: ${error instanceof Error ? error.message : error}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       if (error instanceof UnauthorizedException) {
         throw error;
       }
@@ -102,7 +119,12 @@ export class AuthService {
     }
   }
   /** Registra novo usuário */
-  async register(data: { name: string; email: string; senha: string; whatsapp?: string }) {
+  async register(data: {
+    name: string;
+    email: string;
+    senha: string;
+    whatsapp?: string;
+  }) {
     // 1. Verificar se email já existe
     const { data: existingUser } = await this.supabase
       .from('users')
@@ -114,16 +136,19 @@ export class AuthService {
       throw new UnauthorizedException('Email já cadastrado.');
     }
 
-    // 2. Buscar ID do role 'client' ou 'customer'
+    // 2. Buscar ID do role 'customer' (papel canônico para clientes finais —
+    // ver StaffRole para os papéis de staff, que são distintos).
     let { data: role } = await this.supabase
       .from('roles')
       .select('id')
-      .in('name', ['client', 'customer', 'user'])
+      .eq('name', 'customer')
       .maybeSingle();
 
     // Se não existir, CRIA o role 'customer' automaticamente
     if (!role) {
-      console.log("Role de cliente não encontrado. Criando role 'customer'...");
+      this.logger.debug(
+        "Role de cliente não encontrado. Criando role 'customer'...",
+      );
       const { data: newRole, error: createRoleError } = await this.supabase
         .from('roles')
         .insert({ name: 'customer' })
@@ -131,13 +156,17 @@ export class AuthService {
         .single();
 
       if (createRoleError) {
-        throw new InternalServerErrorException(`Erro ao criar role 'customer': ${createRoleError.message}`);
+        throw new InternalServerErrorException(
+          `Erro ao criar role 'customer': ${createRoleError.message}`,
+        );
       }
       role = newRole;
     }
 
     if (!role) {
-      throw new InternalServerErrorException("Impossível definir papel do usuário.");
+      throw new InternalServerErrorException(
+        'Impossível definir papel do usuário.',
+      );
     }
 
     // 3. Hash da senha
@@ -152,15 +181,20 @@ export class AuthService {
         password: hashedPassword,
         whatsapp: data.whatsapp,
         role_id: role.id,
-        is_active: true
+        is_active: true,
       })
       .select()
       .single();
 
     if (error) {
-      console.error('Erro Supabase ao criar usuário:', error);
+      this.logger.error(
+        `Erro Supabase ao criar usuário: ${error.message}`,
+        error,
+      );
       // Retornar o erro exato do banco para facilitar debug
-      throw new BadRequestException(`Erro Banco de Dados: ${error.message} (${error.details || ''})`);
+      throw new BadRequestException(
+        `Erro Banco de Dados: ${error.message} (${error.details || ''})`,
+      );
     }
 
     // 5. Vincular/Criar Cliente (Customer) para Vendas
@@ -178,14 +212,12 @@ export class AuthService {
         .eq('id', existingCustomer.id);
     } else {
       // Se não existe, cria um novo cliente vinculado
-      await this.supabase
-        .from('customers')
-        .insert({
-          name: data.name,
-          email: data.email,
-          phone: data.whatsapp, // Mapeia whatsapp do user para phone do customer
-          user_id: newUser.id,
-        });
+      await this.supabase.from('customers').insert({
+        name: data.name,
+        email: data.email,
+        phone: data.whatsapp, // Mapeia whatsapp do user para phone do customer
+        user_id: newUser.id,
+      });
     }
 
     // Retorna o usuário sem a senha

@@ -16,13 +16,17 @@ import {
   ParseBoolPipe,
 } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 import { CollectionsService } from './collections.service';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 
+/** Gestão de catálogo: só admin/gestor. Leitura pública usa @Public() por rota. */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('collections')
 export class CollectionsController {
-  constructor(private readonly collectionsService: CollectionsService) { }
+  constructor(private readonly collectionsService: CollectionsService) {}
 
   @Post()
   create(@Body() createCollectionDto: CreateCollectionDto) {
@@ -31,9 +35,7 @@ export class CollectionsController {
 
   @Public()
   @Get()
-  findAll(
-    @Query('is_active', ParseBoolPipe) isActive?: boolean,
-  ) {
+  findAll(@Query('is_active', ParseBoolPipe) isActive?: boolean) {
     return this.collectionsService.findAll(isActive);
   }
 
@@ -67,4 +69,3 @@ export class CollectionsController {
     return this.collectionsService.delete(id);
   }
 }
-

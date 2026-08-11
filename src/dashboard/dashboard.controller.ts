@@ -4,12 +4,22 @@
  * Expõe endpoints para dados do dashboard.
  */
 
-import { Controller, Get, Query, ParseIntPipe, DefaultValuePipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  ParseIntPipe,
+  DefaultValuePipe,
+} from '@nestjs/common';
 import { DashboardService } from './dashboard.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 
+/** Dados financeiros/operacionais consolidados: só admin/gestor. */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) { }
+  constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('kpis')
   async getKPIs() {
@@ -35,4 +45,3 @@ export class DashboardController {
     return this.dashboardService.getRevenueHistory();
   }
 }
-

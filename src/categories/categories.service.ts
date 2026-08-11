@@ -6,21 +6,24 @@
 
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
-  ) { }
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
+  ) {}
 
   /**
    * Cria uma nova categoria
    */
   async create(createCategoryDto: CreateCategoryDto) {
     // Gera slug automaticamente se não fornecido
-    const slug = createCategoryDto.slug || this.generateSlug(createCategoryDto.name);
+    const slug =
+      createCategoryDto.slug || this.generateSlug(createCategoryDto.name);
 
     const { data, error } = await this.supabase
       .from('categories')
@@ -28,7 +31,10 @@ export class CategoriesService {
         name: createCategoryDto.name,
         slug: slug,
         description: createCategoryDto.description,
-        is_active: createCategoryDto.is_active !== undefined ? createCategoryDto.is_active : true,
+        is_active:
+          createCategoryDto.is_active !== undefined
+            ? createCategoryDto.is_active
+            : true,
         image_url: createCategoryDto.image_url,
       })
       .select()
@@ -91,7 +97,9 @@ export class CategoriesService {
       .single();
 
     if (error || !data) {
-      throw new NotFoundException(`Categoria com slug "${slug}" não encontrada`);
+      throw new NotFoundException(
+        `Categoria com slug "${slug}" não encontrada`,
+      );
     }
 
     return data;
@@ -105,7 +113,9 @@ export class CategoriesService {
     await this.findOne(id);
 
     // Se o nome foi alterado e não há slug, gera um novo slug
-    const updateData = { ...updateCategoryDto } as UpdateCategoryDto & { slug?: string };
+    const updateData = { ...updateCategoryDto } as UpdateCategoryDto & {
+      slug?: string;
+    };
     if (updateCategoryDto.name && !updateCategoryDto.slug) {
       updateData.slug = this.generateSlug(updateCategoryDto.name);
     }
@@ -179,4 +189,3 @@ export class CategoriesService {
       .replace(/(^-|-$)/g, ''); // Remove hífens do início e fim
   }
 }
-

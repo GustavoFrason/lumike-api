@@ -19,7 +19,11 @@ import {
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { ALL_STAFF_ROLES } from '../auth/enums/role.enum';
 
+/** Gestão de clientes: staff em geral (vendedor precisa cadastrar/buscar cliente no PDV). */
+@Roles(...ALL_STAFF_ROLES)
 @Controller('customers')
 export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
@@ -55,4 +59,3 @@ export class CustomersController {
     return this.customersService.remove(id);
   }
 }
-

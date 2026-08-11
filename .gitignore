@@ -56,3 +56,15 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# Backups e artefatos de debug (saída de lint/typecheck/test redirecionada
+# pra arquivo durante depuração — não deve ser versionada)
+*.bak
+*_error*.txt
+*_error*.log
+lint*.txt
+lint*.log
+typecheck*.txt
+typecheck*.log
+test_output.txt
+test_results.json

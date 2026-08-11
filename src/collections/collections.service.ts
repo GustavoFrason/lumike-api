@@ -6,21 +6,24 @@
 
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 import { CreateCollectionDto } from './dto/create-collection.dto';
 import { UpdateCollectionDto } from './dto/update-collection.dto';
 
 @Injectable()
 export class CollectionsService {
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
-  ) { }
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
+  ) {}
 
   /**
    * Cria uma nova coleção
    */
   async create(createCollectionDto: CreateCollectionDto) {
     // Gera slug automaticamente se não fornecido
-    const slug = createCollectionDto.slug || this.generateSlug(createCollectionDto.nome);
+    const slug =
+      createCollectionDto.slug || this.generateSlug(createCollectionDto.nome);
 
     const { data, error } = await this.supabase
       .from('colecoes')
@@ -28,7 +31,10 @@ export class CollectionsService {
         nome: createCollectionDto.nome,
         slug: slug,
         descricao: createCollectionDto.descricao,
-        is_active: createCollectionDto.is_active !== undefined ? createCollectionDto.is_active : true,
+        is_active:
+          createCollectionDto.is_active !== undefined
+            ? createCollectionDto.is_active
+            : true,
       })
       .select()
       .single();
@@ -104,7 +110,9 @@ export class CollectionsService {
     await this.findOne(id);
 
     // Se o nome foi alterado e não há slug, gera um novo slug
-    const updateData = { ...updateCollectionDto } as UpdateCollectionDto & { slug?: string };
+    const updateData = { ...updateCollectionDto } as UpdateCollectionDto & {
+      slug?: string;
+    };
     if (updateCollectionDto.nome && !updateCollectionDto.slug) {
       updateData.slug = this.generateSlug(updateCollectionDto.nome);
     }
@@ -178,4 +186,3 @@ export class CollectionsService {
       .replace(/(^-|-$)/g, ''); // Remove hífens do início e fim
   }
 }
-

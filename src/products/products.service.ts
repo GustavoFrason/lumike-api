@@ -4,21 +4,31 @@
  * Responsável por operações CRUD de produtos no Supabase.
  */
 
-import { Injectable, Inject, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 @Injectable()
 export class ProductsService {
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
-  ) { }
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
+  ) {}
 
   /**
    * Cria um novo produto
    */
-  async create(createProductDto: CreateProductDto & { existingProductId?: number }) {
+  async create(
+    createProductDto: CreateProductDto & { existingProductId?: number },
+  ) {
     const { existingProductId, ...productData } = createProductDto;
 
     // If existingProductId is provided, UPDATE instead of CREATE
@@ -30,7 +40,8 @@ export class ProductsService {
         .eq('id', existingProductId)
         .single();
 
-      const newTotalStock = (current?.current_stock || 0) + (productData.current_stock || 0);
+      const newTotalStock =
+        (current?.current_stock || 0) + (productData.current_stock || 0);
 
       // Update existing product with new data and summed stock
       return this.update(existingProductId, {
@@ -48,7 +59,9 @@ export class ProductsService {
         .maybeSingle();
 
       if (existing) {
-        throw new BadRequestException(`Produto com SKU '${productData.sku}' já existe!`);
+        throw new BadRequestException(
+          `Produto com SKU '${productData.sku}' já existe!`,
+        );
       }
     }
 
@@ -71,14 +84,20 @@ export class ProductsService {
         collection: productData.collection,
         current_stock: productData.current_stock || 0,
         min_stock: productData.min_stock || 0,
-        is_active: productData.is_active !== undefined ? productData.is_active : true,
-        is_featured: productData.is_featured !== undefined ? productData.is_featured : false,
+        is_active:
+          productData.is_active !== undefined ? productData.is_active : true,
+        is_featured:
+          productData.is_featured !== undefined
+            ? productData.is_featured
+            : false,
       })
       .select()
       .single();
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao criar produto: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao criar produto: ${error.message}`,
+      );
     }
 
     return productDataResult;
@@ -87,10 +106,18 @@ export class ProductsService {
   /**
    * Lista todos os produtos (com paginação opcional)
    */
-  async findAll(page = 1, limit = 50, isActive?: boolean, search?: string, categoryId?: number, isFeatured?: boolean) {
+  async findAll(
+    page = 1,
+    limit = 50,
+    isActive?: boolean,
+    search?: string,
+    categoryId?: number,
+    isFeatured?: boolean,
+  ) {
     let query = this.supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         categories:category_id (
           id,
@@ -101,7 +128,9 @@ export class ProductsService {
           url,
           ordem
         )
-      `, { count: 'exact' })
+      `,
+        { count: 'exact' },
+      )
       .order('created_at', { ascending: false });
 
     if (isActive !== undefined) {
@@ -113,7 +142,9 @@ export class ProductsService {
     }
 
     if (search) {
-      query = query.or(`name.ilike.%${search}%,sku.ilike.%${search}%,sku2.ilike.%${search}%`);
+      query = query.or(
+        `name.ilike.%${search}%,sku.ilike.%${search}%,sku2.ilike.%${search}%`,
+      );
     }
 
     if (isFeatured !== undefined) {
@@ -128,7 +159,9 @@ export class ProductsService {
     const { data, error, count } = await query;
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao listar produtos: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao listar produtos: ${error.message}`,
+      );
     }
 
     return {
@@ -147,7 +180,8 @@ export class ProductsService {
   async findOne(id: number) {
     const { data, error } = await this.supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         categories:category_id (
           id,
@@ -158,7 +192,8 @@ export class ProductsService {
           url,
           ordem
         )
-      `)
+      `,
+      )
       .eq('id', id)
       .single();
 
@@ -175,7 +210,8 @@ export class ProductsService {
   async findBySlug(slug: string) {
     const { data, error } = await this.supabase
       .from('products')
-      .select(`
+      .select(
+        `
         *,
         categories:category_id (
           id,
@@ -186,7 +222,8 @@ export class ProductsService {
           url,
           ordem
         )
-      `)
+      `,
+      )
       .eq('slug', slug)
       .single();
 
@@ -233,7 +270,9 @@ export class ProductsService {
       .single();
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao atualizar produto: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao atualizar produto: ${error.message}`,
+      );
     }
 
     return data;
@@ -254,7 +293,9 @@ export class ProductsService {
       .single();
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao remover produto: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao remover produto: ${error.message}`,
+      );
     }
 
     return data;
@@ -273,7 +314,9 @@ export class ProductsService {
       .eq('id', id);
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao deletar produto: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao deletar produto: ${error.message}`,
+      );
     }
 
     return { message: 'Produto deletado permanentemente' };
@@ -289,7 +332,9 @@ export class ProductsService {
       .in('id', ids);
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao ativar produtos em massa: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao ativar produtos em massa: ${error.message}`,
+      );
     }
 
     return data;
@@ -305,10 +350,11 @@ export class ProductsService {
       .in('id', ids);
 
     if (error) {
-      throw new InternalServerErrorException(`Erro ao desativar produtos em massa: ${error.message}`);
+      throw new InternalServerErrorException(
+        `Erro ao desativar produtos em massa: ${error.message}`,
+      );
     }
 
     return data;
   }
 }
-

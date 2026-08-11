@@ -7,15 +7,21 @@ import {
   Param,
   Delete,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { WarrantiesService } from './warranties.service';
 import { CreateWarrantyDto } from './dto/create-warranty.dto';
 import { UpdateWarrantyDto } from './dto/update-warranty.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 
+/**
+ * Gestão de garantias: só admin/gestor. A página "Minhas Garantias" do
+ * cliente ainda é uma tela estática (mock) no frontend, não consome esta
+ * rota — quando isso for implementado, precisará de um endpoint separado
+ * com escopo por customer_id do próprio usuário logado.
+ */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('warranties')
-@UseGuards(JwtAuthGuard)
 export class WarrantiesController {
   constructor(private readonly warrantiesService: WarrantiesService) {}
 

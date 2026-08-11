@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { SupabaseModule } from './supabase/supabase.module';
 import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ProductsModule } from './products/products.module';
 import { CategoriesModule } from './categories/categories.module';
 import { CollectionsModule } from './collections/collections.module';
@@ -22,10 +27,18 @@ import { CashFlowModule } from './cash-flow/cash-flow.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { WarrantiesModule } from './warranties/warranties.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // .env.local (não versionado) tem prioridade sobre .env — permite apontar
+    // pro Supabase local (`supabase start`, ver supabase/config.toml) sem
+    // tocar no .env "real" que aponta pra nuvem.
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    // Limite global: 100 req/min por IP. Rotas específicas (login, register,
+    // captura de lead) usam @Throttle() com limites mais restritos — ver
+    // seus controllers.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     SupabaseModule,
     AuthModule,
     ProductsModule,
@@ -45,8 +58,18 @@ import { WarrantiesModule } from './warranties/warranties.module';
     SuppliersModule,
     PurchasesModule,
     WarrantiesModule,
+    UsersModule,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    // Ordem importa: ThrottlerGuard rejeita tráfego abusivo antes de gastar
+    // ciclo com verificação de JWT; JwtAuthGuard popula request.user antes
+    // do RolesGuard rodar.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
+  ],
 })
-export class AppModule { }
+export class AppModule {}

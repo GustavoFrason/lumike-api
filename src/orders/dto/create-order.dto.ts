@@ -56,6 +56,10 @@ export class CreateOrderDto {
   customer_id?: number;
 
   @IsOptional()
+  @IsNumber()
+  seller_id?: number;
+
+  @IsOptional()
   @IsString()
   notes?: string;
 

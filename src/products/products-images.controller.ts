@@ -18,11 +18,21 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ProductsImagesService } from './products-images.service';
+import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 
+/**
+ * Gestão de imagens de produto: escrita (registrar/apagar/reordenar) é só
+ * admin/gestor. Listagem é pública — a página pública do produto
+ * (/produtos/[slug]) também busca as fotos por aqui.
+ */
+@Roles(...MANAGEMENT_ROLES)
 @Controller('products/:productId/images')
 export class ProductsImagesController {
   constructor(private readonly imagesService: ProductsImagesService) {}
 
+  @Public()
   @Get()
   async getImages(@Param('productId', ParseIntPipe) productId: number) {
     return this.imagesService.getProductImages(productId);
@@ -37,7 +47,11 @@ export class ProductsImagesController {
       throw new BadRequestException('URL da imagem é obrigatória');
     }
 
-    return this.imagesService.registerImage(productId, body.url, body.ordem || 0);
+    return this.imagesService.registerImage(
+      productId,
+      body.url,
+      body.ordem || 0,
+    );
   }
 
   @Delete(':imageId')
@@ -53,4 +67,3 @@ export class ProductsImagesController {
     return this.imagesService.updateImageOrder(imageId, ordem);
   }
 }
-

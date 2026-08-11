@@ -1,29 +1,33 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { FavoritesService } from './favorites.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../auth/types/auth-user.type';
 
+/**
+ * Favoritos: qualquer usuário autenticado (sem @Roles — escopo é sempre o
+ * próprio usuário, nunca precisou de papel de staff). O JwtAuthGuard global
+ * já cobre a autenticação, por isso não há @UseGuards local aqui.
+ */
 @Controller('favorites')
 export class FavoritesController {
-    constructor(private readonly favoritesService: FavoritesService) { }
+  constructor(private readonly favoritesService: FavoritesService) {}
 
-    @UseGuards(JwtAuthGuard)
-    @Post('toggle')
-    async toggle(@Req() req, @Body('productId') productId: number) {
-        const userId = req.user.id; // Pega do token JWT
-        return this.favoritesService.toggle(userId, productId);
-    }
+  @Post('toggle')
+  async toggle(
+    @CurrentUser() user: AuthUser,
+    @Body('productId') productId: number,
+  ) {
+    // Bug corrigido: o payload do JWT usa `sub` para o id do usuário, não `id`.
+    return this.favoritesService.toggle(user.sub, productId);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get('ids')
-    async getIds(@Req() req) {
-        const userId = req.user.id;
-        return this.favoritesService.getFavoriteIds(userId);
-    }
+  @Get('ids')
+  async getIds(@CurrentUser() user: AuthUser) {
+    return this.favoritesService.getFavoriteIds(user.sub);
+  }
 
-    @UseGuards(JwtAuthGuard)
-    @Get()
-    async getFavorites(@Req() req) {
-        const userId = req.user.id;
-        return this.favoritesService.getFavorites(userId);
-    }
+  @Get()
+  async getFavorites(@CurrentUser() user: AuthUser) {
+    return this.favoritesService.getFavorites(user.sub);
+  }
 }

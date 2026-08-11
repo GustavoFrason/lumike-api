@@ -1,15 +1,16 @@
 import { Module } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
-import { InventoryModule } from '../inventory/inventory.module';
-import { CashFlowModule } from '../cash-flow/cash-flow.module';
-import { SupabaseModule } from '../supabase/supabase.module';
 import { SettingsModule } from '../settings/settings.module';
 
+// InventoryModule/CashFlowModule não são mais importados aqui: a baixa de
+// estoque e o lançamento de caixa da criação/cancelamento de pedido agora
+// acontecem dentro da função atômica fn_create_order/fn_cancel_order no
+// Postgres, não mais via chamada direta a esses services (ver orders.service.ts).
 @Module({
-  imports: [InventoryModule, CashFlowModule, SupabaseModule, SettingsModule],
+  imports: [SettingsModule],
   controllers: [OrdersController],
   providers: [OrdersService],
   exports: [OrdersService],
 })
-export class OrdersModule { }
+export class OrdersModule {}

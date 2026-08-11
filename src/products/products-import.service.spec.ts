@@ -1,41 +1,52 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsImportService } from './products-import.service';
+import { SettingsService } from '../settings/settings.service';
 
 describe('ProductsImportService', () => {
-    let service: ProductsImportService;
-    let mockSupabase: any;
+  let service: ProductsImportService;
+  let mockSupabase: any;
+  let mockSettingsService: Partial<SettingsService>;
 
-    beforeEach(async () => {
-        mockSupabase = {
-            from: jest.fn().mockReturnThis(),
-            select: jest.fn().mockReturnThis(),
-            eq: jest.fn().mockReturnThis(),
-            maybeSingle: jest.fn(),
-            update: jest.fn().mockReturnThis(),
-            insert: jest.fn().mockReturnThis(),
-            rpc: jest.fn().mockReturnThis(),
-        };
+  beforeEach(async () => {
+    mockSupabase = {
+      from: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn(),
+      update: jest.fn().mockReturnThis(),
+      insert: jest.fn().mockReturnThis(),
+      rpc: jest.fn().mockReturnThis(),
+    };
+    // ProductsImportService.processImport busca o multiplicador de preço
+    // configurável via SettingsService — default 2.0, igual ao real.
+    mockSettingsService = {
+      getNumber: jest.fn().mockResolvedValue(2.0),
+    };
 
-        const module: TestingModule = await Test.createTestingModule({
-            providers: [
-                ProductsImportService,
-                {
-                    provide: 'SUPABASE_CLIENT',
-                    useValue: mockSupabase,
-                },
-            ],
-        }).compile();
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        ProductsImportService,
+        {
+          provide: 'SUPABASE_CLIENT',
+          useValue: mockSupabase,
+        },
+        {
+          provide: SettingsService,
+          useValue: mockSettingsService,
+        },
+      ],
+    }).compile();
 
-        service = module.get<ProductsImportService>(ProductsImportService);
-    });
+    service = module.get<ProductsImportService>(ProductsImportService);
+  });
 
-    it('should be defined', () => {
-        expect(service).toBeDefined();
-    });
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
 
-    describe('parseNfe', () => {
-        it('should correctly parse a simple NFe XML', async () => {
-            const xml = `
+  describe('parseNfe', () => {
+    it('should correctly parse a simple NFe XML', async () => {
+      const xml = `
                 <nfeProc>
                     <NFe>
                         <infNFe Id="NFe123">
@@ -51,19 +62,19 @@ describe('ProductsImportService', () => {
                     </NFe>
                 </nfeProc>
             `;
-            const buffer = Buffer.from(xml);
+      const buffer = Buffer.from(xml);
 
-            mockSupabase.maybeSingle.mockResolvedValue({ data: null }); // New product
+      mockSupabase.maybeSingle.mockResolvedValue({ data: null }); // New product
 
-            const result = await service.parseNfe(buffer);
+      const result = await service.parseNfe(buffer);
 
-            expect(result.totalItems).toBe(1);
-            expect(result.items[0].sku).toBe('SKU123');
-            expect(result.items[0].action).toBe('CREATE_NEW');
-        });
+      expect(result.totalItems).toBe(1);
+      expect(result.items[0].sku).toBe('SKU123');
+      expect(result.items[0].action).toBe('CREATE_NEW');
+    });
 
-        it('should identify existing products', async () => {
-            const xml = `
+    it('should identify existing products', async () => {
+      const xml = `
                 <NFe>
                     <infNFe>
                         <det>
@@ -77,46 +88,50 @@ describe('ProductsImportService', () => {
                     </infNFe>
                 </NFe>
             `;
-            const buffer = Buffer.from(xml);
+      const buffer = Buffer.from(xml);
 
-            mockSupabase.maybeSingle.mockResolvedValue({
-                data: { id: 1, name: 'Existente', current_stock: 2 }
-            });
+      mockSupabase.maybeSingle.mockResolvedValue({
+        data: { id: 1, name: 'Existente', current_stock: 2 },
+      });
 
-            const result = await service.parseNfe(buffer);
+      const result = await service.parseNfe(buffer);
 
-            expect(result.items[0].action).toBe('UPDATE_STOCK');
-            expect(result.items[0].existing_product!.id).toBe(1);
-        });
-
-        it('should throw error for invalid XML', async () => {
-            const buffer = Buffer.from('<invalid></invalid>');
-            await expect(service.parseNfe(buffer)).rejects.toThrow('Formato de NFe inválido');
-        });
+      expect(result.items[0].action).toBe('UPDATE_STOCK');
+      expect(result.items[0].existing_product!.id).toBe(1);
     });
 
-    describe('processImport', () => {
-        it('should create new products', async () => {
-            const items: any[] = [
-                {
-                    action: 'CREATE_NEW',
-                    sku: 'NEW1',
-                    name_xml: 'Novo Produto',
-                    quantity_xml: 5,
-                    cost_price_xml: 20
-                }
-            ];
-
-            mockSupabase.insert.mockResolvedValue({ error: null });
-
-            const result = await service.processImport(items);
-
-            expect(result.created).toBe(1);
-            expect(mockSupabase.from).toHaveBeenCalledWith('products');
-            expect(mockSupabase.insert).toHaveBeenCalledWith(expect.objectContaining({
-                sku: 'NEW1',
-                current_stock: 5
-            }));
-        });
+    it('should throw error for invalid XML', async () => {
+      const buffer = Buffer.from('<invalid></invalid>');
+      await expect(service.parseNfe(buffer)).rejects.toThrow(
+        'Formato de NFe inválido',
+      );
     });
+  });
+
+  describe('processImport', () => {
+    it('should create new products', async () => {
+      const items: any[] = [
+        {
+          action: 'CREATE_NEW',
+          sku: 'NEW1',
+          name_xml: 'Novo Produto',
+          quantity_xml: 5,
+          cost_price_xml: 20,
+        },
+      ];
+
+      mockSupabase.insert.mockResolvedValue({ error: null });
+
+      const result = await service.processImport(items);
+
+      expect(result.created).toBe(1);
+      expect(mockSupabase.from).toHaveBeenCalledWith('products');
+      expect(mockSupabase.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sku: 'NEW1',
+          current_stock: 5,
+        }),
+      );
+    });
+  });
 });

@@ -1,8 +1,6 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
-import { JwtService } from '@nestjs/jwt';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,16 +8,15 @@ async function bootstrap() {
   // Configuração global de validação
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,            // remove campos não previstos nos DTOs
+      whitelist: true, // remove campos não previstos nos DTOs
       forbidNonWhitelisted: true, // erro se vier campo extra
-      transform: true,            // transforma payload para os tipos do DTO
+      transform: true, // transforma payload para os tipos do DTO
     }),
   );
 
-  // Configuração global do guard JWT
-  const reflector = app.get(Reflector);
-  const jwtService = app.get(JwtService);
-  app.useGlobalGuards(new JwtAuthGuard(jwtService, reflector));
+  // Guards de autenticação (JwtAuthGuard) e autorização (RolesGuard) são
+  // registrados via APP_GUARD em AppModule — isso os coloca sob o DI do
+  // Nest corretamente, em vez de instanciados manualmente aqui.
 
   // Habilita CORS com origens específicas
   const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -30,7 +27,7 @@ async function bootstrap() {
     origin: (origin, callback) => {
       // Permite requisições sem origin (ex: Postman, mobile apps)
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {

@@ -5,16 +5,17 @@
 
 import { Module, Global } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 
 @Global()
 @Module({
   providers: [
     {
       provide: 'SUPABASE_CLIENT',
-      useFactory: (): SupabaseClient => {
+      useFactory: (): SupabaseClient<Database> => {
         const url = process.env.SUPABASE_URL!;
         const key = process.env.SUPABASE_SERVICE_ROLE!;
-        return createClient(url, key);
+        return createClient<Database>(url, key);
       },
     },
   ],

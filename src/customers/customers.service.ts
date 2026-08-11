@@ -6,13 +6,15 @@
 
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/supabase';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Injectable()
 export class CustomersService {
   constructor(
-    @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
+    @Inject('SUPABASE_CLIENT')
+    private readonly supabase: SupabaseClient<Database>,
   ) {}
 
   /**
@@ -105,7 +107,10 @@ export class CustomersService {
   async remove(id: number) {
     await this.findOne(id);
 
-    const { error } = await this.supabase.from('customers').delete().eq('id', id);
+    const { error } = await this.supabase
+      .from('customers')
+      .delete()
+      .eq('id', id);
 
     if (error) {
       throw new Error(`Erro ao remover cliente: ${error.message}`);
@@ -114,4 +119,3 @@ export class CustomersService {
     return { message: 'Cliente removido com sucesso' };
   }
 }
-
