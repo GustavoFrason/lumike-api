@@ -1,4 +1,13 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsBoolean, Min, MaxLength, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  Min,
+  MaxLength,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateProductDto {
   @IsOptional()
@@ -15,7 +24,9 @@ export class CreateProductDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Descrição resumida é obrigatória' })
-  @MaxLength(40, { message: 'Descrição resumida deve ter no máximo 40 caracteres' })
+  @MaxLength(40, {
+    message: 'Descrição resumida deve ter no máximo 40 caracteres',
+  })
   short_description: string;
 
   @IsOptional()

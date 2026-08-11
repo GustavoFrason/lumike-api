@@ -18,5 +18,4 @@ import { SettingsModule } from '../settings/settings.module';
   providers: [ProductsService, ProductsImagesService, ProductsImportService],
   exports: [ProductsService, ProductsImagesService],
 })
-export class ProductsModule { }
-
+export class ProductsModule {}

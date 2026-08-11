@@ -9,11 +9,14 @@ import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
+import type { Server } from 'http';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 describe('Rate limiting em /auth/login', () => {
-  let app: INestApplication;
+  // Generic explícito: sem ele, getHttpServer() volta `any` (default do
+  // INestApplication) e o supertest reclama de "unsafe argument".
+  let app: INestApplication<Server>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

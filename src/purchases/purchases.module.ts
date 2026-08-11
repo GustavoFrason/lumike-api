@@ -4,9 +4,9 @@ import { PurchasesController } from './purchases.controller';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
-    imports: [SupabaseModule],
-    providers: [PurchasesService],
-    controllers: [PurchasesController],
-    exports: [PurchasesService],
+  imports: [SupabaseModule],
+  providers: [PurchasesService],
+  controllers: [PurchasesController],
+  exports: [PurchasesService],
 })
-export class PurchasesModule { }
+export class PurchasesModule {}

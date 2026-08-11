@@ -3,7 +3,7 @@ import { LeadsController } from './leads.controller';
 import { LeadsService } from './leads.service';
 
 @Module({
-    controllers: [LeadsController],
-    providers: [LeadsService],
+  controllers: [LeadsController],
+  providers: [LeadsService],
 })
-export class LeadsModule { }
+export class LeadsModule {}

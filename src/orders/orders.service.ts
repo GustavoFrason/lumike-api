@@ -159,7 +159,7 @@ export class OrdersService {
     }
 
     this.logger.log(`Pedido #${orderId} criado com sucesso.`);
-    return this.findOne(orderId as number);
+    return this.findOne(orderId);
   }
 
   async findAll(page = 1, limit = 50, status?: string, customerId?: number) {

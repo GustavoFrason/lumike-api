@@ -25,4 +25,3 @@ export class CreateCategoryDto {
   @IsString()
   image_url?: string;
 }
-

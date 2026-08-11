@@ -16,7 +16,10 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     // Validar tamanho
-    if (this.options.maxSizeInBytes && file.size > this.options.maxSizeInBytes) {
+    if (
+      this.options.maxSizeInBytes &&
+      file.size > this.options.maxSizeInBytes
+    ) {
       const maxSizeMB = (this.options.maxSizeInBytes / 1024 / 1024).toFixed(2);
       throw new BadRequestException(
         `Arquivo muito grande. Tamanho máximo: ${maxSizeMB}MB`,
@@ -24,7 +27,10 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     // Validar MIME type
-    if (this.options.allowedMimeTypes && this.options.allowedMimeTypes.length > 0) {
+    if (
+      this.options.allowedMimeTypes &&
+      this.options.allowedMimeTypes.length > 0
+    ) {
       if (!this.options.allowedMimeTypes.includes(file.mimetype)) {
         throw new BadRequestException(
           `Tipo de arquivo não permitido. Tipos aceitos: ${this.options.allowedMimeTypes.join(', ')}`,
@@ -33,7 +39,10 @@ export class FileValidationPipe implements PipeTransform {
     }
 
     // Validar extensão
-    if (this.options.allowedExtensions && this.options.allowedExtensions.length > 0) {
+    if (
+      this.options.allowedExtensions &&
+      this.options.allowedExtensions.length > 0
+    ) {
       const extension = file.originalname.split('.').pop()?.toLowerCase();
       if (!extension || !this.options.allowedExtensions.includes(extension)) {
         throw new BadRequestException(

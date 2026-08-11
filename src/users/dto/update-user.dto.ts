@@ -1,7 +1,14 @@
 /**
  * DTO para atualização de usuário (staff). Todos os campos são opcionais.
  */
-import { IsString, IsEmail, IsOptional, IsNumber, IsBoolean, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateUserDto {
   @IsOptional()

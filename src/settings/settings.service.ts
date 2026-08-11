@@ -71,7 +71,7 @@ export class SettingsService {
       if (setting.value === null) return defaultValue;
       const val = parseFloat(setting.value);
       return isNaN(val) ? defaultValue : val;
-    } catch (error) {
+    } catch {
       return defaultValue;
     }
   }

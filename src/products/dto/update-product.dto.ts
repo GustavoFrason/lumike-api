@@ -3,7 +3,14 @@
  * Todos os campos são opcionais
  */
 
-import { IsString, IsNumber, IsOptional, IsBoolean, Min, MaxLength, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  Min,
+  IsDateString,
+} from 'class-validator';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -83,4 +90,3 @@ export class UpdateProductDto {
   @IsBoolean()
   is_featured?: boolean;
 }
-

@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import type { CustomOrigin } from '@nestjs/common/interfaces/external/cors-options.interface';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,20 +24,22 @@ async function bootstrap() {
     ? process.env.ALLOWED_ORIGINS.split(',')
     : ['http://localhost:3000', 'http://localhost:3001'];
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      // Permite requisições sem origin (ex: Postman, mobile apps)
-      if (!origin) return callback(null, true);
+  const corsOrigin: CustomOrigin = (origin, callback) => {
+    // Permite requisições sem origin (ex: Postman, mobile apps)
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  };
+
+  app.enableCors({
+    origin: corsOrigin,
     credentials: true,
   });
 
   await app.listen(process.env.PORT || 3001);
 }
-bootstrap();
+void bootstrap();

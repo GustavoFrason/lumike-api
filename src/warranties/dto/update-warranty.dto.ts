@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsEnum, IsArray, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEnum,
+  IsArray,
+  IsNumber,
+} from 'class-validator';
 
 export class UpdateWarrantyDto {
   @IsOptional()
@@ -14,7 +20,9 @@ export class UpdateWarrantyDto {
   product_id?: number;
 
   @IsOptional()
-  @IsEnum(['plating', 'break', 'stone_loss', 'other'], { message: 'Tipo de garantia inválido' })
+  @IsEnum(['plating', 'break', 'stone_loss', 'other'], {
+    message: 'Tipo de garantia inválido',
+  })
   type?: 'plating' | 'break' | 'stone_loss' | 'other';
 
   @IsOptional()
@@ -31,8 +39,17 @@ export class UpdateWarrantyDto {
   images?: string[];
 
   @IsOptional()
-  @IsEnum(['pending', 'analyzing', 'factory', 'ready', 'finished', 'rejected'], { message: 'Status inválido' })
-  status?: 'pending' | 'analyzing' | 'factory' | 'ready' | 'finished' | 'rejected';
+  @IsEnum(
+    ['pending', 'analyzing', 'factory', 'ready', 'finished', 'rejected'],
+    { message: 'Status inválido' },
+  )
+  status?:
+    | 'pending'
+    | 'analyzing'
+    | 'factory'
+    | 'ready'
+    | 'finished'
+    | 'rejected';
 
   @IsOptional()
   @IsString()

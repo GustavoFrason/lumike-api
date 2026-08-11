@@ -1,0 +1,14 @@
+# Normaliza terminador de linha pra LF em todo arquivo de texto, independente
+# do SO de quem fez checkout/commit (Windows tende a converter pra CRLF por
+# padrão via core.autocrlf) — evita diffs gigantes de "toda linha mudou" só
+# por causa do terminador, que já causaram ruído real no lint deste projeto.
+* text=auto eol=lf
+
+# Binários: nunca normalizar.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.xlsx binary
+*.pdf binary

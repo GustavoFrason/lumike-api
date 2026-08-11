@@ -31,6 +31,9 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      // ignoreRestSiblings: permite o idioma `const { campoQueNaoQuero, ...resto } = obj`
+      // pra "omitir" um campo (ex: senha) sem precisar usar o campo descartado.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },

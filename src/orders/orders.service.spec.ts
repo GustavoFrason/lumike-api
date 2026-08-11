@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { SettingsService } from '../settings/settings.service';
+import { CreateOrderDto } from './dto/create-order.dto';
 import {
   createMockSupabaseClient,
   MockSupabaseClient,
@@ -12,7 +13,7 @@ describe('OrdersService', () => {
   let mockSupabase: MockSupabaseClient;
   let mockSettingsService: Partial<SettingsService>;
 
-  const baseDto = {
+  const baseDto: CreateOrderDto = {
     payment_method: 'dinheiro',
     payment_status: 'pago',
     items: [{ product_id: 1, quantity: 2, unit_price: 50 }],
@@ -41,7 +42,7 @@ describe('OrdersService', () => {
       });
 
       await expect(
-        service.create({ ...baseDto, couponCode: 'INVALIDO' } as any),
+        service.create({ ...baseDto, couponCode: 'INVALIDO' }),
       ).rejects.toThrow(BadRequestException);
       expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
@@ -62,7 +63,7 @@ describe('OrdersService', () => {
         error: null,
       });
 
-      const result = await service.create(baseDto as any, {
+      const result = await service.create(baseDto, {
         sub: 9,
         email: 'vendedor@lumike.com',
         role: 'vendedor',
@@ -87,7 +88,7 @@ describe('OrdersService', () => {
         error: { message: 'INSUFFICIENT_STOCK: sem saldo' },
       });
 
-      await expect(service.create(baseDto as any)).rejects.toThrow(
+      await expect(service.create(baseDto)).rejects.toThrow(
         BadRequestException,
       );
     });

@@ -5,7 +5,15 @@
  * ele, um `body: any` deixaria passar qualquer campo extra sem checagem
  * (inclusive campos que não existem na tabela `users`).
  */
-import { IsString, IsNotEmpty, IsEmail, IsOptional, IsNumber, IsBoolean, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsEmail,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  MinLength,
+} from 'class-validator';
 
 export class CreateUserDto {
   @IsString()

@@ -2,7 +2,15 @@
  * DTO para criação de pedido
  */
 
-import { IsNumber, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, Min } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsArray,
+  ValidateNested,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateOrderItemDto {
@@ -90,4 +98,3 @@ export class CreateOrderDto {
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
 }
-

@@ -41,4 +41,3 @@ export class UpdateCustomerDto {
   @IsString()
   notes?: string;
 }
-

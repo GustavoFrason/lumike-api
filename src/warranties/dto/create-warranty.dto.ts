@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsEnum, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsEnum,
+  IsArray,
+} from 'class-validator';
 
 export class CreateWarrantyDto {
   @IsOptional()
@@ -13,7 +20,9 @@ export class CreateWarrantyDto {
   @IsNotEmpty({ message: 'ID do produto é obrigatório' })
   product_id: number;
 
-  @IsEnum(['plating', 'break', 'stone_loss', 'other'], { message: 'Tipo de garantia inválido' })
+  @IsEnum(['plating', 'break', 'stone_loss', 'other'], {
+    message: 'Tipo de garantia inválido',
+  })
   type: 'plating' | 'break' | 'stone_loss' | 'other';
 
   @IsEnum(['sold', 'stock'], { message: 'Origem da garantia inválida' })

@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 import { CreateAccessoryPurchaseDto } from './dto/create-accessory-purchase.dto';

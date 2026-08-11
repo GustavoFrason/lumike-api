@@ -32,7 +32,7 @@ export class ProductsImagesService {
     const storageFileName = `${productId}/${Date.now()}.${fileExt}`;
 
     // Upload para o Storage
-    const { data: uploadData, error: uploadError } = await this.supabase.storage
+    const { error: uploadError } = await this.supabase.storage
       .from(this.BUCKET_NAME)
       .upload(storageFileName, fileBuffer, {
         contentType: mimeType,

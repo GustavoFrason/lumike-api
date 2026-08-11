@@ -1,22 +1,18 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ProductsImportService } from './products-import.service';
+import { ProductsImportService, ImportItem } from './products-import.service';
 import { SettingsService } from '../settings/settings.service';
+import {
+  createMockSupabaseClient,
+  MockSupabaseClient,
+} from '../test-utils/supabase-mock';
 
 describe('ProductsImportService', () => {
   let service: ProductsImportService;
-  let mockSupabase: any;
+  let mockSupabase: MockSupabaseClient;
   let mockSettingsService: Partial<SettingsService>;
 
   beforeEach(async () => {
-    mockSupabase = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      maybeSingle: jest.fn(),
-      update: jest.fn().mockReturnThis(),
-      insert: jest.fn().mockReturnThis(),
-      rpc: jest.fn().mockReturnThis(),
-    };
+    mockSupabase = createMockSupabaseClient();
     // ProductsImportService.processImport busca o multiplicador de preço
     // configurável via SettingsService — default 2.0, igual ao real.
     mockSettingsService = {
@@ -110,7 +106,7 @@ describe('ProductsImportService', () => {
 
   describe('processImport', () => {
     it('should create new products', async () => {
-      const items: any[] = [
+      const items: ImportItem[] = [
         {
           action: 'CREATE_NEW',
           sku: 'NEW1',

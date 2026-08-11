@@ -22,4 +22,3 @@ export class UpdateCollectionDto {
   @IsBoolean()
   is_active?: boolean;
 }
-

@@ -26,4 +26,3 @@ export class UpdateCategoryDto {
   @IsString()
   image_url?: string;
 }
-

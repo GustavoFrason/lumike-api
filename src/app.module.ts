@@ -34,7 +34,10 @@ import { UsersModule } from './users/users.module';
     // .env.local (não versionado) tem prioridade sobre .env — permite apontar
     // pro Supabase local (`supabase start`, ver supabase/config.toml) sem
     // tocar no .env "real" que aponta pra nuvem.
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env.local', '.env'] }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
     // Limite global: 100 req/min por IP. Rotas específicas (login, register,
     // captura de lead) usam @Throttle() com limites mais restritos — ver
     // seus controllers.

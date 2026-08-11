@@ -2,7 +2,13 @@
  * DTOs para movimentações de estoque
  */
 
-import { IsNumber, IsNotEmpty, IsString, IsOptional, Min } from 'class-validator';
+import {
+  IsNumber,
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  Min,
+} from 'class-validator';
 
 export class StockEntryDto {
   @IsNumber()
@@ -60,4 +66,3 @@ export class StockAdjustmentDto {
   @IsNotEmpty({ message: 'Motivo/observação da conferência é obrigatório' })
   reason: string;
 }
-

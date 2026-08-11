@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { WarrantiesService } from './warranties.service';
+import { UpdateWarrantyDto } from './dto/update-warranty.dto';
 import {
   createMockSupabaseClient,
   MockSupabaseClient,
@@ -40,7 +41,9 @@ describe('WarrantiesService', () => {
       const result = await service.create({
         customer_id: 1,
         product_id: 2,
-      } as any);
+        type: 'other',
+        origin: 'sold',
+      });
 
       expect(result.status).toBe('pending');
       expect(mockSupabase.insert).toHaveBeenCalledWith(
@@ -54,9 +57,9 @@ describe('WarrantiesService', () => {
         error: { message: 'db offline' },
       });
 
-      await expect(service.create({} as any)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(
+        service.create({ product_id: 1, type: 'other', origin: 'sold' }),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -90,8 +93,11 @@ describe('WarrantiesService', () => {
         error: null,
       });
 
-      await service.update('w1', { status: 'finished' } as any);
+      await service.update('w1', { status: 'finished' });
 
+      // expect.any() é tipado como `any` pelo @types/jest — falso positivo
+      // conhecido do no-unsafe-assignment, não um gap de tipagem nosso.
+      /* eslint-disable @typescript-eslint/no-unsafe-assignment */
       expect(mockSupabase.update).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'finished',
@@ -100,6 +106,7 @@ describe('WarrantiesService', () => {
           finished_at: expect.any(String),
         }),
       );
+      /* eslint-enable @typescript-eslint/no-unsafe-assignment */
     });
 
     it('does not set finished_at for other statuses', async () => {
@@ -108,9 +115,16 @@ describe('WarrantiesService', () => {
         error: null,
       });
 
-      await service.update('w1', { status: 'analyzing' } as any);
+      await service.update('w1', { status: 'analyzing' });
 
-      const updatePayload = mockSupabase.update.mock.calls[0][0];
+      // jest.Mock sem generics deixa .mock.calls como any[][] — mesmo caso
+      // do disable acima, não é um gap de tipagem do nosso código.
+      /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+      const updatePayload = mockSupabase.update.mock
+        .calls[0][0] as UpdateWarrantyDto & {
+        finished_at?: string;
+      };
+      /* eslint-enable @typescript-eslint/no-unsafe-member-access */
       expect(updatePayload.finished_at).toBeUndefined();
     });
   });

@@ -5,7 +5,14 @@ import {
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
-import { IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 
 export class CreateCashFlowDto {
   @IsIn(['IN', 'OUT'])

@@ -306,13 +306,26 @@ export class InventoryService {
 
     const bySeller = new Map<
       number,
-      { user_id: number; name: string; items: Array<{ product_id: number; name: string; sku: string; price: number; quantity: number }> }
+      {
+        user_id: number;
+        name: string;
+        items: Array<{
+          product_id: number;
+          name: string;
+          sku: string;
+          price: number;
+          quantity: number;
+        }>;
+      }
     >();
 
-    const rows = (data || []) as unknown as StockLocationWithUserAndProductRow[];
+    const rows = (data ||
+      []) as unknown as StockLocationWithUserAndProductRow[];
     for (const item of rows) {
       const user = Array.isArray(item.users) ? item.users[0] : item.users;
-      const product = Array.isArray(item.products) ? item.products[0] : item.products;
+      const product = Array.isArray(item.products)
+        ? item.products[0]
+        : item.products;
       if (!item.user_id || !user) continue;
 
       if (!bySeller.has(item.user_id)) {

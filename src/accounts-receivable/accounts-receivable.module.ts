@@ -5,8 +5,8 @@ import { CashFlowModule } from '../cash-flow/cash-flow.module';
 import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
-    imports: [CashFlowModule, SupabaseModule],
-    controllers: [AccountsReceivableController],
-    providers: [AccountsReceivableService],
+  imports: [CashFlowModule, SupabaseModule],
+  controllers: [AccountsReceivableController],
+  providers: [AccountsReceivableService],
 })
-export class AccountsReceivableModule { }
+export class AccountsReceivableModule {}

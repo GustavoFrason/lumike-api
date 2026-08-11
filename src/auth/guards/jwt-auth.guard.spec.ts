@@ -2,6 +2,12 @@ import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import type { AuthUser } from '../types/auth-user.type';
+
+interface FakeRequest {
+  headers: { authorization?: string };
+  user?: AuthUser;
+}
 
 describe('JwtAuthGuard', () => {
   let guard: JwtAuthGuard;
@@ -9,7 +15,7 @@ describe('JwtAuthGuard', () => {
   let reflector: jest.Mocked<Pick<Reflector, 'getAllAndOverride'>>;
 
   const buildContext = (authHeader?: string) => {
-    const request: any = {
+    const request: FakeRequest = {
       headers: { authorization: authHeader },
       user: undefined,
     };

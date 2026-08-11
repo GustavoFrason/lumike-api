@@ -41,4 +41,3 @@ export class CreateCustomerDto {
   @IsString()
   notes?: string;
 }
-

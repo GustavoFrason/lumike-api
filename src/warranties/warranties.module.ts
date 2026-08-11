@@ -4,6 +4,6 @@ import { WarrantiesController } from './warranties.controller';
 
 @Module({
   providers: [WarrantiesService],
-  controllers: [WarrantiesController]
+  controllers: [WarrantiesController],
 })
 export class WarrantiesModule {}

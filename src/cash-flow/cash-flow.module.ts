@@ -9,4 +9,4 @@ import { SupabaseModule } from '../supabase/supabase.module';
   controllers: [CashFlowController],
   exports: [CashFlowService],
 })
-export class CashFlowModule { }
+export class CashFlowModule {}

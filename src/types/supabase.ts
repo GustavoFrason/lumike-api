@@ -13,12 +13,8 @@
  * fn_update_product_stock e vw_cash_flow_balance/vw_dashboard/
  * vw_top_sellers_90d conferidos e presentes.
  *
- * PENDENTE (não é problema de tipos, é migration não aplicada): as tabelas
- * `payments` e `estoque` ainda existem no banco ao vivo, mas a migration
- * 20260809000005_drop_dead_tables.sql (que dropa as duas) já está no repo
- * — ou seja, essa migration nunca rodou em produção. Não foram adicionadas
- * de volta aqui de propósito (nenhum código as usa mais); rodar a migration
- * pendente em produção quando for confirmado que é seguro.
+ * 2026-08-10: migration 20260809000005_drop_dead_tables.sql aplicada em
+ * produção — `payments` e `estoque` não existem mais (confirmado ao vivo).
  *
  * Regenerar: veja lumike-api/scripts/gen-supabase-types.md
  */
