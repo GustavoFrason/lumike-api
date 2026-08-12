@@ -555,6 +555,7 @@ export interface Database {
           boca_paid_now: number | null;
           seller_id: number | null;
           installments: number | null;
+          stock_location_user_id: number | null;
         };
         Insert: {
           id?: number;
@@ -574,6 +575,7 @@ export interface Database {
           boca_paid_now?: number | null;
           seller_id?: number | null;
           installments?: number | null;
+          stock_location_user_id?: number | null;
         };
         Update: {
           id?: number;
@@ -593,6 +595,7 @@ export interface Database {
           boca_paid_now?: number | null;
           seller_id?: number | null;
           installments?: number | null;
+          stock_location_user_id?: number | null;
         };
         Relationships: [
           {
@@ -605,6 +608,13 @@ export interface Database {
           {
             foreignKeyName: 'orders_seller_id_fkey';
             columns: ['seller_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'orders_stock_location_user_id_fkey';
+            columns: ['stock_location_user_id'];
             isOneToOne: false;
             referencedRelation: 'users';
             referencedColumns: ['id'];
@@ -1262,6 +1272,7 @@ export interface Database {
           p_receiver_name?: string | null;
           p_seller_id: number | null;
           p_status: string | null;
+          p_stock_location_user_id?: number | null;
           p_total_amount: number | null;
           p_transaction_id: string | null;
         };

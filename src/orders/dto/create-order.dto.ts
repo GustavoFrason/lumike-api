@@ -74,9 +74,20 @@ export class CreateOrderDto {
   @IsNumber()
   customer_id?: number;
 
+  // Quem recebe o crédito de comissão — não afeta de onde o estoque sai
+  // (ver stock_location_user_id, abaixo). Antes esse campo fazia as duas
+  // coisas: escolher um vendedor só pra comissão fazia a baixa de estoque
+  // tentar descontar do estoque PESSOAL dele (normalmente vazio), dando
+  // "estoque insuficiente" com saldo de sobra no Central.
   @IsOptional()
   @IsNumber()
   seller_id?: number;
+
+  // De qual localidade (inventory_locations) o estoque desta venda sai.
+  // undefined/null = Estoque Central. Independente de seller_id.
+  @IsOptional()
+  @IsNumber()
+  stock_location_user_id?: number;
 
   @IsOptional()
   @IsString()

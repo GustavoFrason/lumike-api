@@ -82,6 +82,36 @@ describe('OrdersService', () => {
       expect(result.id).toBe(42);
     });
 
+    it('sends seller_id (comissão) e stock_location_user_id (baixa de estoque) como valores independentes', async () => {
+      // Regressão do bug real: vendedor escolhido só pra comissão fazia a
+      // baixa de estoque tentar descontar do estoque pessoal DELE — aqui
+      // os dois valores são diferentes de propósito (vendedor=9,
+      // localidade=Central/null) pra provar que não se misturam mais.
+      mockSupabase.rpc.mockResolvedValueOnce({ data: 42, error: null });
+      mockSupabase.eq.mockReturnValueOnce(mockSupabase).mockResolvedValueOnce({
+        data: [{ id: 1, product_id: 1 }],
+        error: null,
+      });
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 42, status: 'completed', total_amount: 100 },
+        error: null,
+      });
+
+      await service.create({
+        ...baseDto,
+        seller_id: 9,
+        stock_location_user_id: undefined,
+      });
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'fn_create_order',
+        expect.objectContaining({
+          p_seller_id: 9,
+          p_stock_location_user_id: null, // undefined -> null = Estoque Central
+        }),
+      );
+    });
+
     it('maps INSUFFICIENT_STOCK from fn_create_order into BadRequestException', async () => {
       mockSupabase.rpc.mockResolvedValueOnce({
         data: null,

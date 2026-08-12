@@ -136,6 +136,7 @@ export class OrdersService {
         p_card_tax: createOrderDto.card_details?.tax ?? null,
         p_transaction_id: createOrderDto.card_details?.transaction_id ?? null,
         p_installments: createOrderDto.card_details?.installments ?? null,
+        p_stock_location_user_id: createOrderDto.stock_location_user_id ?? null,
         p_items: createOrderDto.items.map((item) => ({
           product_id: item.product_id,
           quantity: item.quantity,
