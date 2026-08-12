@@ -3,12 +3,14 @@
  */
 
 import {
+  IsInt,
   IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsArray,
   ValidateNested,
+  Max,
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -56,6 +58,15 @@ export class CardDetailsDto {
   @IsOptional()
   @IsString()
   transaction_id?: string;
+
+  // Só preenchido no modo "parcelado" — a validação real de parcela
+  // mínima (R$50) é feita no banco, em fn_create_order, que conhece o
+  // total do pedido; aqui é só o intervalo permitido pelo combo.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  installments?: number;
 }
 
 export class CreateOrderDto {

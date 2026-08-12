@@ -26,6 +26,7 @@ import type { Database } from '../types/supabase';
 import { CreateOrderDto } from './dto/create-order.dto';
 import type { AuthUser } from '../auth/types/auth-user.type';
 import { SettingsService } from '../settings/settings.service';
+import { extractInsufficientStockMessage } from '../common/utils/stock-error.util';
 
 type OrderStatus = Database['public']['Enums']['order_status'];
 
@@ -134,6 +135,7 @@ export class OrdersService {
         p_card_brand: createOrderDto.card_details?.brand ?? null,
         p_card_tax: createOrderDto.card_details?.tax ?? null,
         p_transaction_id: createOrderDto.card_details?.transaction_id ?? null,
+        p_installments: createOrderDto.card_details?.installments ?? null,
         p_items: createOrderDto.items.map((item) => ({
           product_id: item.product_id,
           quantity: item.quantity,
@@ -149,7 +151,7 @@ export class OrdersService {
     if (error) {
       if (error.message?.includes('INSUFFICIENT_STOCK')) {
         throw new BadRequestException(
-          'Estoque insuficiente para um ou mais itens do pedido.',
+          extractInsufficientStockMessage(error.message),
         );
       }
       this.logger.error(`Erro ao criar pedido: ${error.message}`, error);

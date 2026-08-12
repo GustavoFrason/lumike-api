@@ -27,6 +27,7 @@ import {
   StockExitDto,
   StockTransferDto,
 } from './dto/stock-movement.dto';
+import { extractInsufficientStockMessage } from '../common/utils/stock-error.util';
 
 interface UserJoinRow {
   id: number;
@@ -401,7 +402,7 @@ export class InventoryService {
   ): never {
     if (error.message?.includes('INSUFFICIENT_STOCK')) {
       throw new BadRequestException(
-        `Estoque insuficiente para o produto ${productId}.`,
+        extractInsufficientStockMessage(error.message),
       );
     }
     this.logger.error(
