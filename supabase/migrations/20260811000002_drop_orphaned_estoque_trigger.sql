@@ -1,0 +1,21 @@
+-- BUG DE PRODUÇÃO: a migration 20260809000005_drop_dead_tables.sql derrubou
+-- a tabela `estoque` (DROP TABLE ... CASCADE), mas CASCADE só derruba o que
+-- tem dependência estrutural real na tabela (FK, view, etc.) — não um
+-- trigger em OUTRA tabela cuja função só faz INSERT nela por dentro do
+-- corpo (texto/bytecode plpgsql, Postgres não rastreia isso como
+-- dependência). O trigger tg_products_sync_estoque, criado em
+-- 20251122155853_add_missing_tables_and_fields.sql, ficou órfão: continua
+-- disparando em todo INSERT em `products` e em todo UPDATE que toque
+-- `current_stock` (inclusive via fn_adjust_stock, quando mexe no estoque
+-- central) e falha com "relation estoque does not exist".
+--
+-- Impacto real: qualquer criação de produto novo, e qualquer movimentação
+-- de estoque central (venda, compra, ajuste, e agora a importação de
+-- planilha Excel), desde que essa migration foi aplicada — não é bug desta
+-- feature, só foi ela que expôs primeiro.
+--
+-- Correção: apaga de vez o trigger e a função — `estoque` já foi
+-- substituída por inventory_locations/inventory_movements, então essa
+-- sincronização não deveria existir mesmo.
+DROP TRIGGER IF EXISTS tg_products_sync_estoque ON products;
+DROP FUNCTION IF EXISTS sync_estoque_from_products();
