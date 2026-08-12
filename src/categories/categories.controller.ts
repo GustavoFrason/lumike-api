@@ -36,7 +36,15 @@ export class CategoriesController {
 
   @Public()
   @Get()
-  findAll(@Query('is_active', ParseBoolPipe) isActive?: boolean) {
+  findAll(
+    // `optional: true` é essencial aqui: sem ele, ParseBoolPipe recebe
+    // `undefined` quando ?is_active não vem na query (uso normal, "traga
+    // tudo") e lança 400 em vez de deixar passar como undefined — só não
+    // dava pra perceber antes porque todo call site do front sempre
+    // mandava um valor explícito (true), nunca a chamada "sem filtro".
+    @Query('is_active', new ParseBoolPipe({ optional: true }))
+    isActive?: boolean,
+  ) {
     return this.categoriesService.findAll(isActive);
   }
 
