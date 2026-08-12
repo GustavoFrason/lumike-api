@@ -37,7 +37,7 @@ describe('RolesGuard', () => {
 
     const user: AuthUser = {
       sub: 1,
-      email: 'cliente@lumike.com',
+      email: 'cliente@lumilee.com',
       role: 'customer',
       role_id: 4,
     };
@@ -51,7 +51,7 @@ describe('RolesGuard', () => {
 
     const user: AuthUser = {
       sub: 2,
-      email: 'gestor@lumike.com',
+      email: 'gestor@lumilee.com',
       role: 'gestor',
       role_id: 2,
     };
@@ -65,7 +65,7 @@ describe('RolesGuard', () => {
 
     const user: AuthUser = {
       sub: 3,
-      email: 'vendedor@lumike.com',
+      email: 'vendedor@lumilee.com',
       role: 'vendedor',
       role_id: 3,
     };
@@ -81,7 +81,7 @@ describe('RolesGuard', () => {
 
     const user: AuthUser = {
       sub: 4,
-      email: 'cliente@lumike.com',
+      email: 'cliente@lumilee.com',
       role: null,
       role_id: null,
     };

@@ -81,7 +81,7 @@ export class UsersService {
       userData;
 
     // Hash da senha se fornecida, senão usa uma senha temporária padrão.
-    const hashedPassword = await bcrypt.hash(password || 'Lumike@123', 10);
+    const hashedPassword = await bcrypt.hash(password || 'Lumilee@123', 10);
 
     const { data, error } = await this.supabase
       .from('users')

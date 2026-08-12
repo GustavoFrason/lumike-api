@@ -1,7 +1,7 @@
 /**
  * CollectionsModule
  * --------------------
- * Define o módulo de coleções da Lumike API.
+ * Define o módulo de coleções da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

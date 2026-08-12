@@ -1,7 +1,7 @@
 /**
  * CustomersModule
  * --------------------
- * Define o módulo de clientes da Lumike API.
+ * Define o módulo de clientes da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

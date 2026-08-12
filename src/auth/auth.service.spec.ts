@@ -45,7 +45,7 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.validateUser('nobody@lumike.com', 'x'),
+        service.validateUser('nobody@lumilee.com', 'x'),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -53,7 +53,7 @@ describe('AuthService', () => {
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: {
           id: 1,
-          email: 'admin@lumike.com',
+          email: 'admin@lumilee.com',
           password: 'hashed',
           role_id: 1,
         },
@@ -62,7 +62,7 @@ describe('AuthService', () => {
       (mockedBcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
 
       await expect(
-        service.validateUser('admin@lumike.com', 'wrong'),
+        service.validateUser('admin@lumilee.com', 'wrong'),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -70,7 +70,7 @@ describe('AuthService', () => {
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: {
           id: 1,
-          email: 'admin@lumike.com',
+          email: 'admin@lumilee.com',
           password: 'hashed',
           role_id: 1,
         },
@@ -82,7 +82,7 @@ describe('AuthService', () => {
         error: null,
       });
 
-      const result = await service.validateUser('admin@lumike.com', 'correct');
+      const result = await service.validateUser('admin@lumilee.com', 'correct');
 
       expect(result.roleName).toBe('admin');
     });
@@ -93,7 +93,7 @@ describe('AuthService', () => {
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: {
           id: 1,
-          email: 'admin@lumike.com',
+          email: 'admin@lumilee.com',
           password: 'hashed',
           role_id: 1,
           name: 'Admin',
@@ -106,12 +106,12 @@ describe('AuthService', () => {
         error: null,
       });
 
-      const result = await service.login('admin@lumike.com', 'correct');
+      const result = await service.login('admin@lumilee.com', 'correct');
 
       expect(result.access_token).toBe('fake.jwt.token');
       expect(result.user).toEqual({
         id: 1,
-        email: 'admin@lumike.com',
+        email: 'admin@lumilee.com',
         name: 'Admin',
         role: 'admin',
         role_id: 1,
@@ -128,7 +128,7 @@ describe('AuthService', () => {
         error: null,
       });
 
-      await expect(service.login('nobody@lumike.com', 'x')).rejects.toThrow(
+      await expect(service.login('nobody@lumilee.com', 'x')).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -160,7 +160,7 @@ describe('AuthService', () => {
         data: {
           id: 10,
           name: 'Novo',
-          email: 'novo@lumike.com',
+          email: 'novo@lumilee.com',
           password: 'hashed-pw',
           role_id: 9,
         },
@@ -169,7 +169,7 @@ describe('AuthService', () => {
 
       const result = await service.register({
         name: 'Novo',
-        email: 'novo@lumike.com',
+        email: 'novo@lumilee.com',
         senha: '123456',
       });
 

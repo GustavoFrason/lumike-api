@@ -1,7 +1,7 @@
 /**
  * InventoryModule
  * --------------------
- * Define o módulo de gestão de estoque da Lumike API.
+ * Define o módulo de gestão de estoque da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

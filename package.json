@@ -1,7 +1,7 @@
 {
   "name": "lumike-api",
   "version": "0.1.0",
-  "description": "Backend da plataforma Lumike (NestJS + Prisma + Supabase)",
+  "description": "Backend da plataforma Lumilee (NestJS + Prisma + Supabase)",
   "author": "Gustavo Frason",
   "private": true,
   "license": "UNLICENSED",

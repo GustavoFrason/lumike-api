@@ -8,6 +8,6 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Lumike API is running 🚀';
+    return 'Lumilee API is running 🚀';
   }
 }

@@ -65,7 +65,7 @@ describe('OrdersService', () => {
 
       const result = await service.create(baseDto, {
         sub: 9,
-        email: 'vendedor@lumike.com',
+        email: 'vendedor@lumilee.com',
         role: 'vendedor',
         role_id: 3,
       });

@@ -67,7 +67,7 @@ describe('JwtAuthGuard', () => {
     reflector.getAllAndOverride.mockReturnValue(false);
     const payload = {
       sub: 1,
-      email: 'admin@lumike.com',
+      email: 'admin@lumilee.com',
       role: 'admin',
       role_id: 1,
     };

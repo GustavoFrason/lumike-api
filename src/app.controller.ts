@@ -1,5 +1,5 @@
 /**
- * Controller principal de teste da API Lumike.
+ * Controller principal de teste da API Lumilee.
  * Responsável por rota raiz (/) com mensagem simples de status.
  */
 

@@ -1,7 +1,7 @@
 /**
  * DashboardModule
  * --------------------
- * Define o módulo de dashboard da Lumike API.
+ * Define o módulo de dashboard da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

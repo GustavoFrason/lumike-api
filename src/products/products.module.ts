@@ -1,7 +1,7 @@
 /**
  * ProductsModule
  * --------------------
- * Define o módulo de produtos da Lumike API.
+ * Define o módulo de produtos da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

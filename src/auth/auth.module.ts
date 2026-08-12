@@ -1,7 +1,7 @@
 /**
  * AuthModule
  * --------------------
- * Define o módulo de autenticação JWT da Lumike API.
+ * Define o módulo de autenticação JWT da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

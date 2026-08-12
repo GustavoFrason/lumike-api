@@ -50,13 +50,13 @@ describe('Rate limiting em /auth/login', () => {
     for (let i = 0; i < 5; i++) {
       const res = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'teste@lumike.com', senha: 'x' });
+        .send({ email: 'teste@lumilee.com', senha: 'x' });
       expect(res.status).not.toBe(429);
     }
 
     const blocked = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: 'teste@lumike.com', senha: 'x' });
+      .send({ email: 'teste@lumilee.com', senha: 'x' });
 
     expect(blocked.status).toBe(429);
   });

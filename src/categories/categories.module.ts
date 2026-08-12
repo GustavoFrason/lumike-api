@@ -1,7 +1,7 @@
 /**
  * CategoriesModule
  * --------------------
- * Define o módulo de categorias da Lumike API.
+ * Define o módulo de categorias da Lumilee API.
  */
 
 import { Module } from '@nestjs/common';

@@ -11,7 +11,7 @@ describe('Endpoints Smoke Test (e2e)', () => {
     const mockJwtGuard = {
         canActivate: (context: ExecutionContext) => {
             const req = context.switchToHttp().getRequest();
-            req.user = { id: 1, sub: 1, email: 'admin@lumike.com.br' };
+            req.user = { id: 1, sub: 1, email: 'admin@lumilee.com.br' };
             return true;
         },
     };

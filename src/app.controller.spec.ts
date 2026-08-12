@@ -16,7 +16,7 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return the API status message', () => {
-      expect(appController.getHello()).toBe('Lumike API is running 🚀');
+      expect(appController.getHello()).toBe('Lumilee API is running 🚀');
     });
   });
 });
