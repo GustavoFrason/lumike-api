@@ -133,7 +133,13 @@ export class PurchaseImportService {
     }
 
     const supplierId = await this.resolveZarpellonSupplierId();
-    const purchaseDate = new Date().toISOString().slice(0, 10);
+    // O front já manda a data escolhida no calendário (default: hoje no
+    // fuso de Brasília — ver getTodayInSaoPaulo em lumike-ui). O fallback
+    // aqui é só defensivo (chamada direta na API sem esse campo); usar
+    // "hoje" do servidor não é ideal (pode não estar em horário de
+    // Brasília), mas é melhor que rejeitar a importação por causa disso.
+    const purchaseDate =
+      dto.purchase_date || new Date().toISOString().slice(0, 10);
 
     const items = dto.items.map((item) => ({
       is_new: item.is_new,

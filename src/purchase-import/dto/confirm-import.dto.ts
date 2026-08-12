@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDateString,
   IsInt,
   IsNumber,
   IsOptional,
@@ -54,6 +55,15 @@ export class ConfirmImportDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  /**
+   * Data real da compra (pode ser retroativa — o vendedor às vezes só
+   * sobe a planilha no sistema dias depois de ter comprado de verdade).
+   * 'YYYY-MM-DD'. Se não vier, cai no dia do servidor (ver PurchaseImportService.confirm).
+   */
+  @IsOptional()
+  @IsDateString()
+  purchase_date?: string;
 
   @IsArray()
   @ArrayMinSize(1)
