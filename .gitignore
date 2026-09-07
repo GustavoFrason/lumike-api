@@ -57,6 +57,9 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
 
+# Dumps de dados de produção (scripts/backup-before-wipe.ts) — nunca versionar
+/backups
+
 # Backups e artefatos de debug (saída de lint/typecheck/test redirecionada
 # pra arquivo durante depuração — não deve ser versionada)
 *.bak
