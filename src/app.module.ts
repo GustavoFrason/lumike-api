@@ -27,6 +27,7 @@ import { CashFlowModule } from './cash-flow/cash-flow.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchasesModule } from './purchases/purchases.module';
 import { PurchaseImportModule } from './purchase-import/purchase-import.module';
+import { CustomerImportModule } from './customer-import/customer-import.module';
 import { WarrantiesModule } from './warranties/warranties.module';
 import { UsersModule } from './users/users.module';
 
@@ -62,6 +63,7 @@ import { UsersModule } from './users/users.module';
     SuppliersModule,
     PurchasesModule,
     PurchaseImportModule,
+    CustomerImportModule,
     WarrantiesModule,
     UsersModule,
   ],
