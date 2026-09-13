@@ -106,7 +106,7 @@ export class PurchaseImportService {
         category_id: suggestion.category_id,
         category_name: suggestion.category_name,
         category_low_confidence: suggestion.low_confidence,
-        suggested_price: Math.round(row.unit_cost * 3 * 100) / 100,
+        suggested_price: this.computeSuggestedPrice(row),
       });
     }
 
@@ -150,6 +150,12 @@ export class PurchaseImportService {
       purchase_date: purchaseDate,
       quantity: item.quantity,
       unit_cost: item.unit_cost,
+      // Só usado quando is_new = true (preço de venda do produto novo, já
+      // vindo do preview — planilha ou regra padrão, o usuário pode ter
+      // editado). Se vier ausente por algum motivo, a função SQL cai no
+      // fallback unit_cost×3 sozinha (ver migration
+      // 20260913000001_purchase_excel_import_price_from_item.sql).
+      price: item.price ?? null,
     }));
 
     const { data: purchaseId, error } = await this.supabase.rpc(
@@ -197,12 +203,13 @@ export class PurchaseImportService {
       const row = data[i];
       if (!row || row.length === 0) continue;
 
-      const [sku2Cell, nameCell, qtyCell, costCell] = row;
+      const [sku2Cell, nameCell, qtyCell, costCell, saleValueCell] = row;
       if (
         sku2Cell === undefined &&
         nameCell === undefined &&
         qtyCell === undefined &&
-        costCell === undefined
+        costCell === undefined &&
+        saleValueCell === undefined
       ) {
         continue; // linha totalmente vazia, não é erro
       }
@@ -218,6 +225,9 @@ export class PurchaseImportService {
         name: this.readCellAsString(nameCell),
         quantity: this.parseNumberCell(qtyCell),
         unit_cost: this.parseNumberCell(costCell),
+        // Coluna opcional ("Valor de Venda") — célula vazia vira NaN aqui,
+        // computeSuggestedPrice() é quem decide o fallback pra unit_cost×3.
+        sale_price: this.parseNumberCell(saleValueCell),
       });
     }
 
@@ -254,6 +264,7 @@ export class PurchaseImportService {
           (Number.isFinite(existing.quantity) ? existing.quantity : 0) +
           (Number.isFinite(row.quantity) ? row.quantity : 0);
         existing.unit_cost = row.unit_cost; // último preço de custo vence
+        existing.sale_price = row.sale_price; // idem pro valor de venda
         existing.duplicated_in_file = true;
         continue;
       }
@@ -264,6 +275,18 @@ export class PurchaseImportService {
     }
 
     return result;
+  }
+
+  /**
+   * Preço de venda sugerido pro produto novo: usa o "Valor de Venda" da
+   * planilha quando preenchido (pedido direto de quem já sobe produtos que
+   * já precificou), senão cai na regra padrão (unit_cost × 3) que sempre
+   * existiu aqui.
+   */
+  private computeSuggestedPrice(row: ImportRow): number {
+    const hasSalePrice = Number.isFinite(row.sale_price) && row.sale_price > 0;
+    const base = hasSalePrice ? row.sale_price : row.unit_cost * 3;
+    return Math.round(base * 100) / 100;
   }
 
   private validateRow(row: ImportRow): string | null {

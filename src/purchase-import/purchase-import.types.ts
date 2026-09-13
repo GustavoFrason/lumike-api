@@ -15,6 +15,13 @@ export interface ImportRow {
   quantity: number;
   /** Coluna D ("Valor Base"); se duplicado no arquivo, fica com o último valor lido. */
   unit_cost: number;
+  /**
+   * Coluna E ("Valor de Venda"), opcional. `NaN` quando a célula está vazia
+   * ou não é um número válido — nesse caso `suggested_price` (NewProductRow)
+   * cai na regra padrão (unit_cost × 3) em vez de usar este valor. Ver
+   * computeSuggestedPrice no service.
+   */
+  sale_price: number;
   duplicated_in_file?: boolean;
 }
 
@@ -30,7 +37,11 @@ export interface NewProductRow extends ImportRow {
   category_name: string;
   /** true quando nenhuma palavra-chave do dicionário casou e caiu na categoria padrão "A classificar". */
   category_low_confidence: boolean;
-  /** unit_cost × 3, editável no preview antes de confirmar. */
+  /**
+   * sale_price (coluna "Valor de Venda") quando preenchido na planilha,
+   * senão unit_cost × 3 — editável no preview antes de confirmar (ver
+   * ConfirmImportItemDto.price, que é o que de fato persiste esse valor).
+   */
   suggested_price: number;
 }
 

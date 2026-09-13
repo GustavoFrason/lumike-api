@@ -7,9 +7,13 @@ import {
   MockSupabaseClient,
 } from '../test-utils/supabase-mock';
 
-/** Monta um Buffer .xlsx com cabeçalho fixo (Produto/Descrição/Qtd./Valor Base) + linhas de dados. */
+/**
+ * Monta um Buffer .xlsx com cabeçalho fixo (Produto/Descrição/Qtd./Valor
+ * Base/Valor de Venda) + linhas de dados. A 5ª coluna (Valor de Venda) é
+ * opcional por linha — pode simplesmente não incluir o elemento.
+ */
 function buildWorkbookBuffer(rows: (string | number)[][]): Buffer {
-  const aoa = [['Produto', 'Descrição', 'Qtd.', 'Valor Base'], ...rows];
+  const aoa = [['Produto', 'Descrição', 'Qtd.', 'Valor Base', 'Valor de Venda'], ...rows];
   const worksheet = XLSX.utils.aoa_to_sheet(aoa);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
@@ -135,6 +139,32 @@ describe('PurchaseImportService', () => {
       expect(result.novos).toHaveLength(0);
     });
 
+    it('usa o "Valor de Venda" da planilha como preço sugerido quando preenchido', async () => {
+      const buffer = buildWorkbookBuffer([
+        ['SKU_PRECO', 'ANEL JÁ PRECIFICADO', 2, 10, 29.9],
+      ]);
+
+      mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
+      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+
+      const result = await service.buildPreview(buffer);
+
+      expect(result.novos[0].suggested_price).toBe(29.9); // não é unit_cost×3 (30)
+    });
+
+    it('cai na regra padrão (unit_cost × 3) quando "Valor de Venda" vem vazio', async () => {
+      const buffer = buildWorkbookBuffer([
+        ['SKU_SEM_PRECO', 'ANEL SEM PREÇO NA PLANILHA', 2, 10],
+      ]);
+
+      mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
+      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+
+      const result = await service.buildPreview(buffer);
+
+      expect(result.novos[0].suggested_price).toBe(30);
+    });
+
     it('rejeita linha inválida sem abortar o restante do arquivo', async () => {
       const buffer = buildWorkbookBuffer([
         ['SKU_OK', 'ANEL VÁLIDO', 2, 10],
@@ -172,6 +202,7 @@ describe('PurchaseImportService', () => {
             name: 'Novo Produto',
             quantity: 2,
             unit_cost: 10,
+            price: 29.9,
           },
           { is_new: false, product_id: 5, quantity: 1, unit_cost: 20 },
         ],
@@ -188,12 +219,14 @@ describe('PurchaseImportService', () => {
               sku2: 'NEW1',
               quantity: 2,
               unit_cost: 10,
+              price: 29.9,
             }),
             expect.objectContaining({
               is_new: false,
               product_id: 5,
               quantity: 1,
               unit_cost: 20,
+              price: null,
             }),
           ],
         }),

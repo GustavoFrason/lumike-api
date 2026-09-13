@@ -49,6 +49,17 @@ export class ConfirmImportItemDto {
   @IsNumber()
   @Min(0)
   unit_cost: number;
+
+  /**
+   * Preço de venda do produto novo (só usado quando is_new = true) — vem do
+   * preview já calculado (planilha ou regra padrão unit_cost×3), editável
+   * pelo usuário antes de confirmar. Ignorado silenciosamente quando
+   * is_new = false (atualização de estoque nunca mexe em preço).
+   */
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  price?: number;
 }
 
 export class ConfirmImportDto {
