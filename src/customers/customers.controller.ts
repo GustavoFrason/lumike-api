@@ -37,8 +37,9 @@ export class CustomersController {
   findAll(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
+    @Query('search') search?: string,
   ) {
-    return this.customersService.findAll(page, limit);
+    return this.customersService.findAll(page, limit, search);
   }
 
   @Get(':id')

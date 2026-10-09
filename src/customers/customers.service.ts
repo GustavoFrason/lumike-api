@@ -9,6 +9,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { buildIlikeOr } from '../common/utils/postgrest-filter.util';
 
 @Injectable()
 export class CustomersService {
@@ -35,15 +36,26 @@ export class CustomersService {
   }
 
   /**
-   * Lista todos os clientes (com paginação opcional)
+   * Lista todos os clientes (com paginação opcional).
+   * `search` filtra por nome, e-mail, telefone ou CPF — usado pela busca
+   * de cliente do PDV e do modal de garantia, que antes mandavam o termo
+   * mas recebiam sempre os 10 clientes mais recentes.
    */
-  async findAll(page = 1, limit = 50) {
+  async findAll(page = 1, limit = 50, search?: string) {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    const { data, error, count } = await this.supabase
-      .from('customers')
-      .select('*', { count: 'exact' })
+    let query = this.supabase.from('customers').select('*', { count: 'exact' });
+
+    const searchFilter = buildIlikeOr(
+      ['name', 'email', 'phone', 'cpf'],
+      search,
+    );
+    if (searchFilter) {
+      query = query.or(searchFilter);
+    }
+
+    const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
 
