@@ -402,10 +402,11 @@ export class PurchaseImportService {
       sku2: string | null;
       sku2_alt: string | null;
     };
-    const candidatesByCode = new Map<
-      string,
-      Map<number, { product: Candidate; matched_by: 'sku2' | 'sku2_alt' }>
-    >();
+    type CandidateMatch = {
+      product: Candidate;
+      matched_by: 'sku2' | 'sku2_alt';
+    };
+    const candidatesByCode = new Map<string, Map<number, CandidateMatch>>();
 
     const addCandidate = (
       code: string | null,
@@ -414,7 +415,8 @@ export class PurchaseImportService {
     ) => {
       const key = normalizeCode(code ?? '');
       if (!key || !wanted.includes(key)) return;
-      const byId = candidatesByCode.get(key) ?? new Map();
+      const byId =
+        candidatesByCode.get(key) ?? new Map<number, CandidateMatch>();
       // Se o mesmo produto bate pelos dois códigos, vale o sku2.
       if (!byId.has(product.id) || matchedBy === 'sku2') {
         byId.set(product.id, { product, matched_by: matchedBy });
