@@ -13,7 +13,10 @@ import {
  * opcional por linha — pode simplesmente não incluir o elemento.
  */
 function buildWorkbookBuffer(rows: (string | number)[][]): Buffer {
-  const aoa = [['Produto', 'Descrição', 'Qtd.', 'Valor Base', 'Valor de Venda'], ...rows];
+  const aoa = [
+    ['Produto', 'Descrição', 'Qtd.', 'Valor Base', 'Valor de Venda'],
+    ...rows,
+  ];
   const worksheet = XLSX.utils.aoa_to_sheet(aoa);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
@@ -145,7 +148,10 @@ describe('PurchaseImportService', () => {
       ]);
 
       mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
-      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: { id: 1 },
+        error: null,
+      });
 
       const result = await service.buildPreview(buffer);
 
@@ -158,7 +164,10 @@ describe('PurchaseImportService', () => {
       ]);
 
       mockSupabase.in.mockResolvedValueOnce({ data: [], error: null });
-      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: { id: 1 }, error: null });
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: { id: 1 },
+        error: null,
+      });
 
       const result = await service.buildPreview(buffer);
 
