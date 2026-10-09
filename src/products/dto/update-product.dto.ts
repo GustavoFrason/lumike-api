@@ -10,7 +10,9 @@ import {
   IsBoolean,
   Min,
   IsDateString,
+  MaxLength,
 } from 'class-validator';
+import { LABEL_TEXT_MAX_LENGTH } from './create-product.dto';
 
 export class UpdateProductDto {
   @IsOptional()
@@ -20,6 +22,20 @@ export class UpdateProductDto {
   @IsOptional()
   @IsString()
   sku2?: string;
+
+  /** `null` ou '' limpa o campo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50, { message: 'Código Zarpellon 2: no máximo 50 caracteres' })
+  sku2_alt?: string | null;
+
+  /** `null` ou '' limpa o campo. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(LABEL_TEXT_MAX_LENGTH, {
+    message: `Texto da etiqueta: no máximo ${LABEL_TEXT_MAX_LENGTH} caracteres`,
+  })
+  label_text?: string | null;
 
   @IsOptional()
   @IsString()
