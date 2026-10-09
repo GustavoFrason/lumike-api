@@ -680,6 +680,10 @@ export interface Database {
           short_description: string;
           collection: string | null;
           supplier_id: number | null;
+          label_text: string | null;
+          sku2_alt: string | null;
+          /** Coluna gerada (valor numérico de sku) — somente leitura. */
+          sku_sort: number | null;
         };
         Insert: {
           id?: number;
@@ -703,6 +707,8 @@ export interface Database {
           short_description: string;
           collection?: string | null;
           supplier_id?: number | null;
+          label_text?: string | null;
+          sku2_alt?: string | null;
         };
         Update: {
           id?: number;
@@ -726,6 +732,8 @@ export interface Database {
           short_description?: string;
           collection?: string | null;
           supplier_id?: number | null;
+          label_text?: string | null;
+          sku2_alt?: string | null;
         };
         Relationships: [
           {
