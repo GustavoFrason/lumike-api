@@ -1283,6 +1283,10 @@ export interface Database {
           p_stock_location_user_id?: number | null;
           p_total_amount: number | null;
           p_transaction_id: string | null;
+          /** NULL = agora (migration 20261010000003). */
+          p_sale_date?: string | null;
+          /** FALSE = venda da mala de revendedora, não lança no caixa. */
+          p_record_cash?: boolean;
         };
         Returns: number;
       };
