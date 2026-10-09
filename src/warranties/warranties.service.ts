@@ -46,7 +46,7 @@ export class WarrantiesService {
     let query = this.supabase.from('warranties').select(
       `
         *,
-        customers:customer_id (name, email),
+        customers:customer_id (name, email, whatsapp:phone),
         products:product_id (name, sku)
       `,
       { count: 'exact' },
@@ -94,8 +94,8 @@ export class WarrantiesService {
       .select(
         `
         *,
-        customers:customer_id (name, email, whatsapp),
-        products:product_id (name, sku, images),
+        customers:customer_id (name, email, whatsapp:phone),
+        products:product_id (name, sku, images:imagens_produto (url, ordem)),
         orders:order_id (created_at, total_amount)
       `,
       )

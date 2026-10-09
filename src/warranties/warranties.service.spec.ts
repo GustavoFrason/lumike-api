@@ -74,6 +74,23 @@ describe('WarrantiesService', () => {
       expect(result.id).toBe('w1');
     });
 
+    it('selects only columns that exist (whatsapp is aliased from customers.phone)', async () => {
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 'w1' },
+        error: null,
+      });
+
+      await service.findOne('w1');
+
+      const selectArg = (mockSupabase.select.mock.calls[0] as unknown[])[0];
+      expect(selectArg).toContain('whatsapp:phone');
+      expect(selectArg).toContain('images:imagens_produto');
+      // customers.whatsapp e products.images não existem no schema — o
+      // PostgREST rejeitava a query inteira e o detalhe sempre dava 404.
+      expect(selectArg).not.toMatch(/email, whatsapp\)/);
+      expect(selectArg).not.toMatch(/sku, images\)/);
+    });
+
     it('throws NotFoundException when not found', async () => {
       mockSupabase.single.mockResolvedValueOnce({
         data: null,
