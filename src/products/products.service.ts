@@ -15,6 +15,11 @@ import type { Database } from '../types/supabase';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { buildIlikeOr } from '../common/utils/postgrest-filter.util';
+import {
+  PUBLIC_PRODUCT_SELECT,
+  PUBLIC_PRODUCTS_MAX_LIMIT,
+  STAFF_PRODUCT_SELECT,
+} from './product-columns';
 
 @Injectable()
 export class ProductsService {
@@ -94,7 +99,11 @@ export class ProductsService {
   }
 
   /**
-   * Lista todos os produtos (com paginação opcional)
+   * Lista todos os produtos (com paginação opcional).
+   *
+   * `publicView` (visitante/cliente): só produtos ativos, só colunas
+   * públicas (sem custo/fornecedor) e no máximo
+   * PUBLIC_PRODUCTS_MAX_LIMIT por página. Staff recebe tudo.
    */
   async findAll(
     page = 1,
@@ -103,27 +112,22 @@ export class ProductsService {
     search?: string,
     categoryId?: number,
     isFeatured?: boolean,
+    publicView = false,
   ) {
+    if (publicView) {
+      limit = Math.min(limit, PUBLIC_PRODUCTS_MAX_LIMIT);
+    }
+
     let query = this.supabase
       .from('products')
-      .select(
-        `
-        *,
-        categories:category_id (
-          id,
-          name,
-          slug
-        ),
-        images:imagens_produto (
-          url,
-          ordem
-        )
-      `,
-        { count: 'exact' },
-      )
+      .select(publicView ? PUBLIC_PRODUCT_SELECT : STAFF_PRODUCT_SELECT, {
+        count: 'exact',
+      })
       .order('created_at', { ascending: false });
 
-    if (isActive !== undefined) {
+    if (publicView) {
+      query = query.eq('is_active', true);
+    } else if (isActive !== undefined) {
       query = query.eq('is_active', isActive);
     }
 
@@ -131,7 +135,10 @@ export class ProductsService {
       query = query.eq('category_id', categoryId);
     }
 
-    const searchFilter = buildIlikeOr(['name', 'sku', 'sku2'], search);
+    const searchFilter = buildIlikeOr(
+      publicView ? ['name', 'sku'] : ['name', 'sku', 'sku2'],
+      search,
+    );
     if (searchFilter) {
       query = query.or(searchFilter);
     }
@@ -194,27 +201,20 @@ export class ProductsService {
   }
 
   /**
-   * Busca um produto por slug
+   * Busca um produto por slug. Em `publicView`, produto inativo é 404 e
+   * as colunas internas (custo/fornecedor) não vêm.
    */
-  async findBySlug(slug: string) {
-    const { data, error } = await this.supabase
+  async findBySlug(slug: string, publicView = false) {
+    let query = this.supabase
       .from('products')
-      .select(
-        `
-        *,
-        categories:category_id (
-          id,
-          name,
-          slug
-        ),
-        images:imagens_produto (
-          url,
-          ordem
-        )
-      `,
-      )
-      .eq('slug', slug)
-      .single();
+      .select(publicView ? PUBLIC_PRODUCT_SELECT : STAFF_PRODUCT_SELECT)
+      .eq('slug', slug);
+
+    if (publicView) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data, error } = await query.single();
 
     if (error || !data) {
       throw new NotFoundException(`Produto com slug "${slug}" não encontrado`);

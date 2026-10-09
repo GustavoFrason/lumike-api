@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
+import { PUBLIC_PRODUCT_COLUMNS } from '../products/product-columns';
 
 @Injectable()
 export class FavoritesService {
@@ -78,7 +79,7 @@ export class FavoritesService {
         id,
         created_at,
         products:product_id (
-            *,
+            ${PUBLIC_PRODUCT_COLUMNS},
             images:imagens_produto(url, ordem),
             categories:category_id(id, name, slug)
         )
