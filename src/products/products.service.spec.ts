@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
+import { BulkStatusDto } from './dto/bulk-status.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import {
   createMockSupabaseClient,
   MockSupabaseClient,
@@ -215,5 +218,38 @@ describe('ProductsService', () => {
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
+  });
+
+  describe('setActiveMany', () => {
+    it('updates is_active for the ids and returns a non-empty JSON body', async () => {
+      mockSupabase.select.mockResolvedValueOnce({
+        data: [{ id: 1 }, { id: 2 }],
+        error: null,
+      });
+
+      const result = await service.setActiveMany([1, 2], false);
+
+      expect(mockSupabase.update).toHaveBeenCalledWith({ is_active: false });
+      expect(mockSupabase.in).toHaveBeenCalledWith('id', [1, 2]);
+      expect(result).toEqual({ updated: 2 });
+    });
+  });
+});
+
+describe('BulkStatusDto', () => {
+  const errorsFor = async (body: object) =>
+    validate(plainToInstance(BulkStatusDto, body));
+
+  it('accepts a list of ids and a boolean', async () => {
+    expect(await errorsFor({ ids: [1, 2], is_active: true })).toHaveLength(0);
+  });
+
+  it('rejects empty, non-integer or missing ids and non-boolean status', async () => {
+    expect(await errorsFor({ ids: [], is_active: true })).not.toHaveLength(0);
+    expect(await errorsFor({ ids: ['1'], is_active: true })).not.toHaveLength(
+      0,
+    );
+    expect(await errorsFor({ is_active: true })).not.toHaveLength(0);
+    expect(await errorsFor({ ids: [1], is_active: 'sim' })).not.toHaveLength(0);
   });
 });

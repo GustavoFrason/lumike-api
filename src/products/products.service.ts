@@ -312,38 +312,26 @@ export class ProductsService {
   }
 
   /**
-   * Ativa múltiplos produtos
+   * Ativa ou desativa vários produtos de uma vez.
+   *
+   * Devolve `{ updated }`: antes devolvia o `data` de um update sem
+   * `.select()` (sempre null), o Nest respondia corpo vazio e o proxy do
+   * front quebrava no `response.json()` — a tela mostrava erro mesmo com a
+   * alteração feita.
    */
-  async activateMany(ids: number[]) {
+  async setActiveMany(ids: number[], isActive: boolean) {
     const { data, error } = await this.supabase
       .from('products')
-      .update({ is_active: true })
-      .in('id', ids);
+      .update({ is_active: isActive })
+      .in('id', ids)
+      .select('id');
 
     if (error) {
       throw new InternalServerErrorException(
-        `Erro ao ativar produtos em massa: ${error.message}`,
+        `Erro ao ${isActive ? 'ativar' : 'desativar'} produtos em massa: ${error.message}`,
       );
     }
 
-    return data;
-  }
-
-  /**
-   * Desativa múltiplos produtos
-   */
-  async deactivateMany(ids: number[]) {
-    const { data, error } = await this.supabase
-      .from('products')
-      .update({ is_active: false })
-      .in('id', ids);
-
-    if (error) {
-      throw new InternalServerErrorException(
-        `Erro ao desativar produtos em massa: ${error.message}`,
-      );
-    }
-
-    return data;
+    return { updated: data?.length ?? 0 };
   }
 }

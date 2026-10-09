@@ -24,6 +24,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsFilterDto } from './dto/get-products-filter.dto';
+import { BulkStatusDto } from './dto/bulk-status.dto';
 
 /** Gestão de catálogo: só admin/gestor. Rotas de leitura pública (vitrine) usam @Public() individualmente. */
 @Roles(...MANAGEMENT_ROLES)
@@ -65,12 +66,8 @@ export class ProductsController {
   }
 
   @Patch('bulk-status')
-  async bulkStatusUpdate(@Body() body: { ids: number[]; is_active: boolean }) {
-    if (body.is_active) {
-      return this.productsService.activateMany(body.ids);
-    } else {
-      return this.productsService.deactivateMany(body.ids);
-    }
+  async bulkStatusUpdate(@Body() body: BulkStatusDto) {
+    return this.productsService.setActiveMany(body.ids, body.is_active);
   }
 
   @Get(':id')
