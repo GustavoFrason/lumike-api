@@ -10,6 +10,13 @@ import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
+/**
+ * Colunas devolvidas após create/update. Nunca inclui `password`: um
+ * `.select()` vazio devolvia o hash bcrypt na resposta da API.
+ */
+export const USER_SAFE_COLUMNS =
+  'id, name, email, role_id, commission_rate, is_active, whatsapp, created_at, updated_at' as const;
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -80,8 +87,7 @@ export class UsersService {
     const { name, email, password, role_id, commission_rate, is_active } =
       userData;
 
-    // Hash da senha se fornecida, senão usa uma senha temporária padrão.
-    const hashedPassword = await bcrypt.hash(password || 'Lumilee@123', 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const { data, error } = await this.supabase
       .from('users')
@@ -93,7 +99,7 @@ export class UsersService {
         commission_rate: commission_rate || 20,
         is_active: is_active !== undefined ? is_active : true,
       })
-      .select()
+      .select(USER_SAFE_COLUMNS)
       .single();
 
     if (error) {
@@ -122,7 +128,7 @@ export class UsersService {
       .from('users')
       .update(updatePayload)
       .eq('id', id)
-      .select()
+      .select(USER_SAFE_COLUMNS)
       .single();
 
     if (error) {
@@ -160,7 +166,7 @@ export class UsersService {
       .from('users')
       .update({ commission_rate: rate })
       .eq('id', id)
-      .select()
+      .select(USER_SAFE_COLUMNS)
       .single();
 
     if (error) {
