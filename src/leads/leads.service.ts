@@ -18,12 +18,13 @@ export class LeadsService {
   ) {}
 
   async create(data: CreateLeadDto) {
-    // 1. Check if lead already exists (by Email or WhatsApp)
-    const { data: existingLead } = await this.supabase
-      .from('leads')
-      .select('*')
-      .or(`email.eq.${data.email},whatsapp.eq.${data.whatsapp}`)
-      .single();
+    // 1. Check if lead already exists (by Email or WhatsApp).
+    // Duas consultas `.eq()` em vez de `.or()` interpolado: o whatsapp é
+    // texto livre e, dentro de `.or()`, vírgula/parênteses viram filtros
+    // extras (dava pra puxar o cupom de outra pessoa).
+    const existingLead =
+      (await this.findExistingLead('email', data.email)) ??
+      (await this.findExistingLead('whatsapp', data.whatsapp));
 
     if (existingLead) {
       // Logic: Do not generate a new code. Return the existing one.
@@ -63,8 +64,9 @@ export class LeadsService {
 
     if (error) {
       this.logger.error(`Erro ao criar lead: ${error.message}`, error);
+      // Rota pública: detalhe do erro de banco fica só no log.
       throw new BadRequestException(
-        `Erro ao salvar cadastro: ${error.message} (${error.details || ''})`,
+        'Não foi possível salvar seu cadastro. Tente novamente.',
       );
     }
 
@@ -84,6 +86,19 @@ export class LeadsService {
     if (error) {
       throw new BadRequestException(error.message);
     }
+    return data;
+  }
+
+  private async findExistingLead(column: 'email' | 'whatsapp', value: string) {
+    if (!value) return null;
+
+    const { data } = await this.supabase
+      .from('leads')
+      .select('*')
+      .eq(column, value)
+      .limit(1)
+      .maybeSingle();
+
     return data;
   }
 }

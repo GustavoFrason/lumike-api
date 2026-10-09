@@ -14,6 +14,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { buildIlikeOr } from '../common/utils/postgrest-filter.util';
 
 @Injectable()
 export class ProductsService {
@@ -130,10 +131,9 @@ export class ProductsService {
       query = query.eq('category_id', categoryId);
     }
 
-    if (search) {
-      query = query.or(
-        `name.ilike.%${search}%,sku.ilike.%${search}%,sku2.ilike.%${search}%`,
-      );
+    const searchFilter = buildIlikeOr(['name', 'sku', 'sku2'], search);
+    if (searchFilter) {
+      query = query.or(searchFilter);
     }
 
     if (isFeatured !== undefined) {
