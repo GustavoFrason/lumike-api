@@ -5,7 +5,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { isEmail } from 'class-validator';
 import type { Database } from '../types/supabase';
+import type { AuthUser } from '../auth/types/auth-user.type';
 import { CreateStockNotificationDto } from './dto/create-stock-notification.dto';
 
 @Injectable()
@@ -17,24 +19,22 @@ export class StockNotificationsService {
     private readonly supabase: SupabaseClient<Database>,
   ) {}
 
-  async create(dto: CreateStockNotificationDto) {
-    const { product_id, user_id, variant_id } = dto;
-    let { email } = dto;
+  /**
+   * Cria um alerta "avise-me".
+   *
+   * Identidade vem SEMPRE do JWT (`user`), nunca de `dto.user_id`: antes,
+   * mandar `{ email: 'user-logged-in', user_id: N }` sem login devolvia o
+   * e-mail do cliente N. Visitante anônimo precisa informar um e-mail
+   * válido. A resposta nunca inclui o e-mail.
+   */
+  async create(dto: CreateStockNotificationDto, user?: AuthUser) {
+    const { product_id, variant_id } = dto;
+    const userId = user?.sub ?? null;
+    const email = user?.email ?? dto.email;
 
-    // Se o usuário está logado, pegamos o e-mail dele do banco/auth se o placeholder foi enviado
-    if (email === 'user-logged-in' && user_id) {
-      const { data: userData } = await this.supabase
-        .from('customers')
-        .select('email')
-        .eq('user_id', user_id)
-        .maybeSingle();
-
-      if (userData?.email) email = userData.email;
-    }
-
-    if (!email) {
+    if (!email || !isEmail(email)) {
       throw new BadRequestException(
-        'E-mail é obrigatório para o alerta de estoque.',
+        'Informe um e-mail válido para o alerta de estoque.',
       );
     }
 
@@ -63,22 +63,26 @@ export class StockNotificationsService {
     const { data, error } = await this.supabase
       .from('stock_notifications')
       .insert({
-        user_id,
+        user_id: userId,
         email,
         product_id,
         variant_id,
         status: 'pending',
       })
-      .select()
+      .select('id')
       .single();
 
     if (error) {
+      this.logger.error(`Erro ao criar alerta de estoque: ${error.message}`);
       throw new BadRequestException(
-        `Erro ao criar alerta de estoque: ${error.message}`,
+        'Não foi possível criar o alerta de estoque.',
       );
     }
 
-    return data;
+    return {
+      id: data.id,
+      message: 'Pronto! Avisaremos quando o produto voltar ao estoque.',
+    };
   }
 
   async getMyAlerts(userId: string | number) {
