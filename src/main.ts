@@ -1,10 +1,29 @@
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import type { CustomOrigin } from '@nestjs/common/interfaces/external/cors-options.interface';
 
+/**
+ * Converte TRUST_PROXY no formato que o Express aceita: número de hops
+ * ("1"), booleano ("true") ou lista de IPs/sub-redes.
+ */
+function parseTrustProxy(value: string): number | boolean | string {
+  if (/^\d+$/.test(value)) return Number(value);
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  return value;
+}
+
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Atrás do proxy do Railway, `req.ip` só é o IP real com trust proxy
+  // ligado (TRUST_PROXY=1 = confia em 1 hop). Usado como fallback pelo
+  // ClientIpThrottlerGuard.
+  if (process.env.TRUST_PROXY) {
+    app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+  }
 
   // Configuração global de validação
   app.useGlobalPipes(

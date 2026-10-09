@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientIpThrottlerGuard } from './common/guards/client-ip-throttler.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
@@ -70,10 +71,11 @@ import { UsersModule } from './users/users.module';
   controllers: [AppController, HealthController],
   providers: [
     AppService,
-    // Ordem importa: ThrottlerGuard rejeita tráfego abusivo antes de gastar
+    // Ordem importa: o throttler rejeita tráfego abusivo antes de gastar
     // ciclo com verificação de JWT; JwtAuthGuard popula request.user antes
-    // do RolesGuard rodar.
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // do RolesGuard rodar. ClientIpThrottlerGuard conta pelo IP do cliente
+    // final mesmo atrás do proxy Next (ver o guard).
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
