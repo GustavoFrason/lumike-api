@@ -1,101 +1,45 @@
-# 📋 Scripts de Migração - Lumike
+# Migrations — Lumilee
 
-## 🚀 Script Completo
+As migrations versionadas são os arquivos `AAAAMMDDHHMMSS_descricao.sql` desta pasta, aplicadas em ordem.
 
-O arquivo `COMPLETE_SCHEMA.sql` contém todo o schema do banco de dados consolidado e pronto para execução.
+## ⚠️ Não use `COMPLETE_SCHEMA.sql`
 
-### Como Executar
+O `COMPLETE_SCHEMA.sql` é um snapshot antigo (nov/2025) e **está desatualizado**. Entre outros problemas, ele recria os triggers de estoque em `order_items`, o que desconta o estoque duas vezes por venda. Ele também cria um admin com senha conhecida. Está aqui só como referência histórica.
 
-1. **Acesse o Supabase Dashboard**
-   - Vá para https://app.supabase.com
-   - Selecione seu projeto
+## Como aplicar
 
-2. **Abra o SQL Editor**
-   - No menu lateral, clique em "SQL Editor"
-   - Clique em "New query"
+- **Local** (Docker, ver `supabase/config.toml`): `supabase db reset` aplica todas as migrations do zero.
+- **Produção**: o banco de produção foi montado à mão no início, então o histórico de migrations dele não bate com estes arquivos. **Não rode `supabase db push` contra produção.** Aplique cada migration nova colando o conteúdo no SQL Editor, na ordem, e confira o resultado.
 
-3. **Execute o Script**
-   - Abra o arquivo `COMPLETE_SCHEMA.sql`
-   - Copie todo o conteúdo
-   - Cole no SQL Editor do Supabase
-   - Clique em "Run" ou pressione `Ctrl+Enter`
+## Regras de segurança (desde `20261009000001_rls_lockdown_public_schema`)
 
-### ⚠️ Importante: Senha do Admin
+- O app **não usa Supabase Auth**: todo acesso a dados passa pela API NestJS com a chave `service_role`. As roles `anon` e `authenticated` **não têm acesso** a nada em `public`.
+- **Toda tabela nova precisa de RLS ligado**, sem policies:
+  ```sql
+  ALTER TABLE public.minha_tabela ENABLE ROW LEVEL SECURITY;
+  ```
+- Não dê `GRANT` para `anon`/`authenticated` em tabelas, views ou funções. As RPCs (`fn_*`) só devem ser executáveis por `service_role`.
+- O Storage (bucket `produtos`) só tem leitura pública. O upload é feito pela API (`POST /uploads/images`).
 
-O script cria o usuário admin, mas a senha precisa ser atualizada com um hash bcrypt.
+## Usuário admin
 
-**Opção 1: Usar o script Node.js**
+Não existe credencial padrão. Para criar um admin ou trocar a senha dele:
+
 ```bash
 cd lumike-api
-npm run ts-node scripts/fix-admin-password.ts
+ADMIN_EMAIL=voce@dominio.com ADMIN_PASSWORD='uma-senha-forte-com-12+' npx ts-node scripts/fix-admin-password.ts
 ```
 
-**Opção 2: Gerar hash online**
-1. Acesse: https://bcrypt-generator.com/
-2. Digite a senha: `123456`
-3. Rounds: `10`
-4. Copie o hash gerado
-5. Execute no Supabase:
-```sql
-UPDATE users 
-SET password = 'hash_gerado_aqui' 
-WHERE email = 'admin@lumike.com';
-```
+O script usa `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE` do ambiente, então **confira se eles apontam para o projeto certo** antes de rodar.
 
-**Opção 3: Gerar hash manualmente**
-```sql
--- No Supabase, execute:
-UPDATE users 
-SET password = '$2b$10$SeuHashBcryptAqui' 
-WHERE email = 'admin@lumike.com';
-```
-
-### 📝 Credenciais Padrão
-
-Após atualizar a senha:
-- **Email:** `admin@lumike.com`
-- **Senha:** `123456`
-
-### ✅ Verificação
-
-Após executar o script, verifique se tudo foi criado:
+## Verificação rápida
 
 ```sql
--- Verificar tabelas
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-ORDER BY table_name;
+-- Tabelas sem RLS (deve voltar vazio)
+SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind IN ('r','p') AND NOT c.relrowsecurity;
 
--- Verificar usuário admin
-SELECT id, name, email, role_id 
-FROM users 
-WHERE email = 'admin@lumike.com';
-
--- Verificar papéis
-SELECT * FROM roles;
+-- Funções que anon consegue executar (deve voltar vazio)
+SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public' AND has_function_privilege('anon', p.oid, 'EXECUTE');
 ```
-
-### 📦 Estrutura Criada
-
-O script cria:
-- ✅ Todos os ENUMs necessários
-- ✅ Todas as tabelas (categories, products, customers, orders, etc.)
-- ✅ Tabelas com UUID (colecoes, imagens_produto, estoque)
-- ✅ Todas as funções e triggers
-- ✅ Todas as views (dashboard, low_stock, top_sellers)
-- ✅ Papéis básicos (admin, gestor, vendedor)
-- ✅ Usuário admin (senha precisa ser atualizada)
-
-### 🔧 Troubleshooting
-
-**Erro: "relation already exists"**
-- O script é idempotente, mas se houver conflitos, você pode precisar limpar o banco primeiro
-
-**Erro: "type already exists"**
-- Os ENUMs já existem, isso é normal se você executar o script múltiplas vezes
-
-**Usuário admin não consegue fazer login**
-- Verifique se a senha foi atualizada com hash bcrypt
-- Execute o script `fix-admin-password.ts`
-
