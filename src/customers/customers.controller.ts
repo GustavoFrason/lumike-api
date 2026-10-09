@@ -20,7 +20,7 @@ import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { ALL_STAFF_ROLES } from '../auth/enums/role.enum';
+import { ALL_STAFF_ROLES, MANAGEMENT_ROLES } from '../auth/enums/role.enum';
 
 /** Gestão de clientes: staff em geral (vendedor precisa cadastrar/buscar cliente no PDV). */
 @Roles(...ALL_STAFF_ROLES)
@@ -55,6 +55,11 @@ export class CustomersController {
     return this.customersService.update(id, updateCustomerDto);
   }
 
+  /**
+   * Excluir cliente apaga o vínculo das vendas dele (customer_id vira
+   * NULL) e some com as dívidas em contas a receber — só a gestão.
+   */
+  @Roles(...MANAGEMENT_ROLES)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.customersService.remove(id);
