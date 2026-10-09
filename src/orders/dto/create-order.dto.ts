@@ -3,12 +3,14 @@
  */
 
 import {
+  ArrayNotEmpty,
   IsInt,
   IsNumber,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsArray,
+  Matches,
   ValidateNested,
   Max,
   Min,
@@ -116,7 +118,19 @@ export class CreateOrderDto {
   card_details?: CardDetailsDto;
 
   @IsArray()
+  @ArrayNotEmpty({ message: 'A venda precisa ter ao menos um item' })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items: CreateOrderItemDto[];
+
+  /**
+   * Data da venda ('YYYY-MM-DD'), para lançar depois uma venda já feita.
+   * Só admin/gestor; não pode ser futura nem anterior ao início do fluxo
+   * de caixa (validado no service). Ausente = agora.
+   */
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, {
+    message: 'Data da venda inválida (use AAAA-MM-DD)',
+  })
+  sale_date?: string;
 }

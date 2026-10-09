@@ -14,10 +14,10 @@ import {
   Delete,
   Query,
   ParseIntPipe,
-  DefaultValuePipe,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { GetOrdersFilterDto } from './dto/get-orders-filter.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { ALL_STAFF_ROLES, MANAGEMENT_ROLES } from '../auth/enums/role.enum';
@@ -37,24 +37,27 @@ export class OrdersController {
     return this.ordersService.create(createOrderDto, user);
   }
 
+  /** Revendedora (vendedor) só recebe as próprias vendas. */
   @Get()
-  findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
-    @Query('status') status?: string,
-    @Query('customer_id') customerId?: string,
-  ) {
-    return this.ordersService.findAll(
-      page,
-      limit,
-      status,
-      customerId ? Number(customerId) : undefined,
-    );
+  findAll(@Query() filters: GetOrdersFilterDto, @CurrentUser() user: AuthUser) {
+    return this.ordersService.findAll(filters, user);
+  }
+
+  /**
+   * Totais por vendedora/loja e por estoque de origem no período. Precisa
+   * vir antes de `:id`.
+   */
+  @Get('summary')
+  summary(@Query() filters: GetOrdersFilterDto, @CurrentUser() user: AuthUser) {
+    return this.ordersService.summary(filters, user);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.ordersService.findOne(id);
+  findOne(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.ordersService.findOne(id, user);
   }
 
   @Roles(...MANAGEMENT_ROLES)
