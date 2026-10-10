@@ -20,6 +20,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
@@ -483,6 +484,7 @@ export class OrdersService {
     id: number,
     details: { refundAmount: number; notes: string; user?: AuthUser },
   ) {
+    await this.assertNotSettled(id);
     if (details.refundAmount > 0) {
       await this.assertRefundAllowed(id);
     }
@@ -596,6 +598,24 @@ export class OrdersService {
       });
     }
     return users;
+  }
+
+  /**
+   * Venda já incluída num acerto com revendedora não pode ser cancelada:
+   * o acerto (e o caixa dele) foi calculado com ela. Ajuste manual.
+   */
+  private async assertNotSettled(orderId: number) {
+    const res = await this.supabase
+      .from('reseller_settlement_orders')
+      .select('settlement_id')
+      .eq('order_id', orderId)
+      .maybeSingle();
+    const settled = res?.data;
+    if (settled) {
+      throw new ConflictException(
+        `Esta venda já entrou no acerto #${settled.settlement_id} com a revendedora e não pode ser cancelada.`,
+      );
+    }
   }
 
   /**

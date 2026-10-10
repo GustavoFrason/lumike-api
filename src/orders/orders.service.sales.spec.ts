@@ -5,6 +5,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -301,8 +302,16 @@ describe('OrdersService — vendas da loja e das revendedoras', () => {
     });
   });
 
-  describe('cancelamento de venda da mala da revendedora', () => {
-    it('recusa estorno quando o dinheiro nunca entrou no caixa da loja', async () => {
+  describe('cancelamento', () => {
+    /** 1º maybeSingle = checagem de acerto (não acertada). */
+    const notSettled = () =>
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+
+    it('recusa estorno de venda da mala quando o dinheiro nunca entrou no caixa da loja', async () => {
+      notSettled();
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: { id: 9, stock_location_user_id: 42 },
         error: null,
@@ -316,6 +325,7 @@ describe('OrdersService — vendas da loja e das revendedoras', () => {
     });
 
     it('aceita estorno de venda antiga da mala que já tinha entrado no caixa', async () => {
+      notSettled();
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: { id: 9, stock_location_user_id: 42 },
         error: null,
@@ -331,12 +341,29 @@ describe('OrdersService — vendas da loja e das revendedoras', () => {
       ).resolves.toEqual({ success: true });
     });
 
-    it('cancelar sem estorno não consulta nada além da função', async () => {
+    it('cancelar sem estorno só confere o acerto e chama a função', async () => {
+      notSettled();
       mockSupabase.rpc.mockResolvedValueOnce({ data: null, error: null });
 
       await service.cancelOrder(9, { refundAmount: 0, notes: '' });
 
-      expect(mockSupabase.maybeSingle).not.toHaveBeenCalled();
+      expect(mockSupabase.maybeSingle).toHaveBeenCalledTimes(1);
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'fn_cancel_order',
+        expect.objectContaining({ p_order_id: 9 }),
+      );
+    });
+
+    it('venda que já entrou num acerto não pode ser cancelada (409)', async () => {
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: { settlement_id: 3 },
+        error: null,
+      });
+
+      await expect(
+        service.cancelOrder(9, { refundAmount: 0, notes: '' }),
+      ).rejects.toThrow(ConflictException);
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
     });
   });
 });
