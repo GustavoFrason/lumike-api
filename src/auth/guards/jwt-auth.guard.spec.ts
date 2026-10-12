@@ -44,6 +44,25 @@ describe('JwtAuthGuard', () => {
     expect(jwtService.verifyAsync).not.toHaveBeenCalled();
   });
 
+  it('attaches request.user on a @Public() route when a valid token is sent', async () => {
+    reflector.getAllAndOverride.mockReturnValue(true);
+    const payload = { sub: 7, email: 'a@b.com', role: 'admin', role_id: 1 };
+    jwtService.verifyAsync.mockResolvedValue(payload);
+    const { context, request } = buildContext('Bearer valid.token.here');
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.user).toEqual(payload);
+  });
+
+  it('still allows a @Public() route as anonymous when the token is invalid', async () => {
+    reflector.getAllAndOverride.mockReturnValue(true);
+    jwtService.verifyAsync.mockRejectedValue(new Error('jwt expired'));
+    const { context, request } = buildContext('Bearer invalid.token.here');
+
+    await expect(guard.canActivate(context)).resolves.toBe(true);
+    expect(request.user).toBeUndefined();
+  });
+
   it('throws UnauthorizedException when no Authorization header is sent', async () => {
     reflector.getAllAndOverride.mockReturnValue(false);
     const { context } = buildContext(undefined);

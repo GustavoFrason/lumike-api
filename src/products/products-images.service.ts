@@ -4,9 +4,17 @@
  * Responsável por operações com imagens de produtos no Supabase Storage.
  */
 
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
+import { detectImageMime } from '../common/utils/image-signature.util';
 
 @Injectable()
 export class ProductsImagesService {
@@ -19,57 +27,46 @@ export class ProductsImagesService {
   ) {}
 
   /**
-   * Faz upload de uma imagem para o Supabase Storage
+   * Sobe uma imagem para o bucket `produtos` em `<folder>/<arquivo>` e
+   * devolve a URL pública. Único caminho de escrita no Storage: o front
+   * não sobe mais direto com a anon key (ver migration
+   * 20261009000002_storage_produtos_revoke_anon_write).
+   *
+   * Tipo e extensão vêm dos magic bytes do arquivo — nunca do nome ou do
+   * Content-Type enviados pelo cliente.
    */
-  async uploadImage(
-    productId: number,
-    fileBuffer: Buffer,
-    fileName: string,
-    mimeType: string,
-    ordem: number = 0,
-  ) {
-    const fileExt = fileName.split('.').pop();
-    const storageFileName = `${productId}/${Date.now()}.${fileExt}`;
+  async uploadToStorage(
+    folder: string,
+    file: Express.Multer.File,
+  ): Promise<{ url: string; path: string }> {
+    const detected = detectImageMime(file.buffer);
+    if (!detected) {
+      throw new BadRequestException(
+        'Arquivo não é uma imagem válida (aceitos: JPG, PNG, WEBP, AVIF, GIF).',
+      );
+    }
 
-    // Upload para o Storage
+    const uniqueSuffix = randomBytes(4).toString('hex');
+    const path = `${folder}/${Date.now()}-${uniqueSuffix}.${detected.ext}`;
+
     const { error: uploadError } = await this.supabase.storage
       .from(this.BUCKET_NAME)
-      .upload(storageFileName, fileBuffer, {
-        contentType: mimeType,
+      .upload(path, file.buffer, {
+        contentType: detected.mime,
+        cacheControl: '3600',
         upsert: false,
       });
 
     if (uploadError) {
-      throw new Error(`Erro ao fazer upload: ${uploadError.message}`);
+      this.logger.error(`Erro ao subir imagem: ${uploadError.message}`);
+      throw new InternalServerErrorException('Erro ao fazer upload da imagem.');
     }
 
-    // Obtém a URL pública da imagem
     const {
       data: { publicUrl },
-    } = this.supabase.storage
-      .from(this.BUCKET_NAME)
-      .getPublicUrl(storageFileName);
+    } = this.supabase.storage.from(this.BUCKET_NAME).getPublicUrl(path);
 
-    // Registra a imagem na tabela imagens_produto
-    const { data: imageData, error: dbError } = await this.supabase
-      .from('imagens_produto')
-      .insert({
-        produto_id: productId,
-        url: publicUrl,
-        ordem: ordem,
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      // Se falhar ao registrar no DB, tenta remover o arquivo do storage
-      await this.supabase.storage
-        .from(this.BUCKET_NAME)
-        .remove([storageFileName]);
-      throw new Error(`Erro ao registrar imagem: ${dbError.message}`);
-    }
-
-    return imageData;
+    return { url: publicUrl, path };
   }
 
   /**

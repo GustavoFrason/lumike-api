@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProductsService } from './products.service';
 import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
+import { BulkStatusDto } from './dto/bulk-status.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import {
   createMockSupabaseClient,
   MockSupabaseClient,
@@ -10,6 +13,10 @@ import {
 describe('ProductsService', () => {
   let service: ProductsService;
   let mockSupabase: MockSupabaseClient;
+
+  /** Primeiro argumento passado ao `.select()` (a lista de colunas). */
+  const firstSelectArg = () =>
+    (mockSupabase.select.mock.calls[0] as unknown[])[0] as string;
 
   beforeEach(async () => {
     jest.setTimeout(10000); // Increase timeout
@@ -77,6 +84,119 @@ describe('ProductsService', () => {
       expect(result.data).toHaveLength(2);
       expect(result.pagination.total).toBe(2);
     });
+
+    describe('publicView (visitante/cliente)', () => {
+      beforeEach(() => {
+        mockSupabase.range.mockResolvedValueOnce({
+          data: [],
+          error: null,
+          count: 0,
+        });
+      });
+
+      it('never selects internal columns like cost_price, sku2 or supplier_id', async () => {
+        await service.findAll(
+          1,
+          10,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
+
+        const selectArg = firstSelectArg();
+        expect(selectArg).not.toMatch(/cost_price|sku2|supplier_id|\*/);
+        expect(selectArg).toMatch(/price/);
+      });
+
+      it('forces is_active=true even when the caller asks for inactive products', async () => {
+        await service.findAll(
+          1,
+          10,
+          false,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
+
+        expect(mockSupabase.eq).toHaveBeenCalledWith('is_active', true);
+        expect(mockSupabase.eq).not.toHaveBeenCalledWith('is_active', false);
+      });
+
+      it('caps the page size at 100', async () => {
+        const result = await service.findAll(
+          1,
+          100000,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
+
+        expect(mockSupabase.range).toHaveBeenCalledWith(0, 99);
+        expect(result.pagination.limit).toBe(100);
+      });
+
+      it('does not search by supplier sku and quotes the term', async () => {
+        await service.findAll(
+          1,
+          10,
+          undefined,
+          'a,id.gt.0',
+          undefined,
+          undefined,
+          true,
+        );
+
+        expect(mockSupabase.or).toHaveBeenCalledWith(
+          'name.ilike."%a id.gt.0%",sku.ilike."%a id.gt.0%"',
+        );
+      });
+    });
+
+    it('staff view keeps all columns and honors is_active=false', async () => {
+      mockSupabase.range.mockResolvedValueOnce({
+        data: [],
+        error: null,
+        count: 0,
+      });
+
+      await service.findAll(1, 10, false);
+
+      const selectArg = firstSelectArg();
+      expect(selectArg).toMatch(/^\*/);
+      expect(mockSupabase.eq).toHaveBeenCalledWith('is_active', false);
+    });
+  });
+
+  describe('findBySlug', () => {
+    it('public view filters inactive products and hides internal columns', async () => {
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 1, name: 'Anel' },
+        error: null,
+      });
+
+      await service.findBySlug('anel', true);
+
+      expect(mockSupabase.eq).toHaveBeenCalledWith('slug', 'anel');
+      expect(mockSupabase.eq).toHaveBeenCalledWith('is_active', true);
+      const selectArg = firstSelectArg();
+      expect(selectArg).not.toMatch(/cost_price/);
+    });
+
+    it('staff view does not filter by is_active', async () => {
+      mockSupabase.single.mockResolvedValueOnce({
+        data: { id: 1, name: 'Anel' },
+        error: null,
+      });
+
+      await service.findBySlug('anel');
+
+      expect(mockSupabase.eq).not.toHaveBeenCalledWith('is_active', true);
+    });
   });
 
   describe('findOne', () => {
@@ -98,5 +218,38 @@ describe('ProductsService', () => {
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
+  });
+
+  describe('setActiveMany', () => {
+    it('updates is_active for the ids and returns a non-empty JSON body', async () => {
+      mockSupabase.select.mockResolvedValueOnce({
+        data: [{ id: 1 }, { id: 2 }],
+        error: null,
+      });
+
+      const result = await service.setActiveMany([1, 2], false);
+
+      expect(mockSupabase.update).toHaveBeenCalledWith({ is_active: false });
+      expect(mockSupabase.in).toHaveBeenCalledWith('id', [1, 2]);
+      expect(result).toEqual({ updated: 2 });
+    });
+  });
+});
+
+describe('BulkStatusDto', () => {
+  const errorsFor = async (body: object) =>
+    validate(plainToInstance(BulkStatusDto, body));
+
+  it('accepts a list of ids and a boolean', async () => {
+    expect(await errorsFor({ ids: [1, 2], is_active: true })).toHaveLength(0);
+  });
+
+  it('rejects empty, non-integer or missing ids and non-boolean status', async () => {
+    expect(await errorsFor({ ids: [], is_active: true })).not.toHaveLength(0);
+    expect(await errorsFor({ ids: ['1'], is_active: true })).not.toHaveLength(
+      0,
+    );
+    expect(await errorsFor({ is_active: true })).not.toHaveLength(0);
+    expect(await errorsFor({ ids: [1], is_active: 'sim' })).not.toHaveLength(0);
   });
 });

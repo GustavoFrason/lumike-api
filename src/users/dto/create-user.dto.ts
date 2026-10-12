@@ -23,10 +23,12 @@ export class CreateUserDto {
   @IsEmail({}, { message: 'E-mail inválido' })
   email: string;
 
-  @IsOptional()
+  // Obrigatória: antes, omitir a senha criava o usuário com uma senha
+  // padrão fixa no código — conhecida por qualquer um que lesse o repo.
   @IsString()
+  @IsNotEmpty({ message: 'Senha é obrigatória' })
   @MinLength(6, { message: 'Senha deve ter ao menos 6 caracteres' })
-  password?: string; // se omitido, o service usa uma senha temporária padrão
+  password: string;
 
   @IsNumber()
   @IsNotEmpty({ message: 'Papel (role_id) é obrigatório' })

@@ -35,7 +35,12 @@ export class CollectionsController {
 
   @Public()
   @Get()
-  findAll(@Query('is_active', ParseBoolPipe) isActive?: boolean) {
+  findAll(
+    // `optional: true`: sem ele, GET /collections sem ?is_active dava 400
+    // (mesmo bug já corrigido em CategoriesController).
+    @Query('is_active', new ParseBoolPipe({ optional: true }))
+    isActive?: boolean,
+  ) {
     return this.collectionsService.findAll(isActive);
   }
 

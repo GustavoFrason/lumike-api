@@ -17,11 +17,14 @@ import {
 } from '@nestjs/common';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { MANAGEMENT_ROLES } from '../auth/enums/role.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { MANAGEMENT_ROLES, isStaffRole } from '../auth/enums/role.enum';
+import type { AuthUser } from '../auth/types/auth-user.type';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { GetProductsFilterDto } from './dto/get-products-filter.dto';
+import { BulkStatusDto } from './dto/bulk-status.dto';
 
 /** Gestão de catálogo: só admin/gestor. Rotas de leitura pública (vitrine) usam @Public() individualmente. */
 @Roles(...MANAGEMENT_ROLES)
@@ -34,9 +37,17 @@ export class ProductsController {
     return this.productsService.create(createProductDto);
   }
 
+  /**
+   * Público, mas com autenticação opcional (ver JwtAuthGuard): staff
+   * logado recebe todas as colunas e produtos inativos; visitante/cliente
+   * recebe só a visão pública.
+   */
   @Public()
   @Get()
-  findAll(@Query() filters: GetProductsFilterDto) {
+  findAll(
+    @Query() filters: GetProductsFilterDto,
+    @CurrentUser() user?: AuthUser,
+  ) {
     return this.productsService.findAll(
       filters.page,
       filters.limit,
@@ -44,22 +55,19 @@ export class ProductsController {
       filters.search,
       filters.category_id,
       filters.is_featured,
+      !isStaffRole(user?.role),
     );
   }
 
   @Public()
   @Get('slug/:slug')
-  findBySlug(@Param('slug') slug: string) {
-    return this.productsService.findBySlug(slug);
+  findBySlug(@Param('slug') slug: string, @CurrentUser() user?: AuthUser) {
+    return this.productsService.findBySlug(slug, !isStaffRole(user?.role));
   }
 
   @Patch('bulk-status')
-  async bulkStatusUpdate(@Body() body: { ids: number[]; is_active: boolean }) {
-    if (body.is_active) {
-      return this.productsService.activateMany(body.ids);
-    } else {
-      return this.productsService.deactivateMany(body.ids);
-    }
+  async bulkStatusUpdate(@Body() body: BulkStatusDto) {
+    return this.productsService.setActiveMany(body.ids, body.is_active);
   }
 
   @Get(':id')

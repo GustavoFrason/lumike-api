@@ -31,12 +31,25 @@ export class JwtAuthGuard implements CanActivate {
       context.getClass(),
     ]);
 
-    if (isPublic) {
-      return true;
-    }
-
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
+
+    if (isPublic) {
+      // Autenticação opcional: rota pública continua acessível a anônimos,
+      // mas quem manda um token válido ganha `request.user` (ex: a vitrine
+      // mostra dados completos pra staff). Token inválido aqui é ignorado.
+      if (token) {
+        try {
+          (request as Request & { user?: AuthUser }).user =
+            await this.jwtService.verifyAsync<AuthUser>(token, {
+              secret: process.env.JWT_SECRET,
+            });
+        } catch {
+          // segue como anônimo
+        }
+      }
+      return true;
+    }
 
     if (!token) {
       throw new UnauthorizedException('Token não fornecido');

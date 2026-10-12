@@ -191,9 +191,9 @@ export class AuthService {
         `Erro Supabase ao criar usuário: ${error.message}`,
         error,
       );
-      // Retornar o erro exato do banco para facilitar debug
+      // Rota pública: o detalhe do erro de banco fica só no log acima.
       throw new BadRequestException(
-        `Erro Banco de Dados: ${error.message} (${error.details || ''})`,
+        'Não foi possível concluir o cadastro. Tente novamente.',
       );
     }
 
