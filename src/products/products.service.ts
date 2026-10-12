@@ -14,12 +14,79 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { buildIlikeOr } from '../common/utils/postgrest-filter.util';
+import {
+  buildExactCodeOr,
+  buildIlikeOr,
+  sanitizeFilterTerm,
+} from '../common/utils/postgrest-filter.util';
 import {
   PUBLIC_PRODUCT_SELECT,
   PUBLIC_PRODUCTS_MAX_LIMIT,
   STAFF_PRODUCT_SELECT,
+  STAFF_PRODUCTS_MAX_LIMIT,
 } from './product-columns';
+
+/** `newest` = mais novos primeiro (padrão); `code` = número do item crescente. */
+export type ProductSort = 'newest' | 'code';
+
+export interface FindProductsOptions {
+  page?: number;
+  limit?: number;
+  isActive?: boolean;
+  search?: string;
+  categoryId?: number;
+  isFeatured?: boolean;
+  sort?: ProductSort;
+  publicView?: boolean;
+}
+
+const EXACT_MATCH_LIMIT = 20;
+
+/** Linha da listagem: colunas variam entre visão pública e de staff. */
+type ProductListRow = { id: number; exact_match?: boolean } & Record<
+  string,
+  unknown
+>;
+
+/**
+ * Campo de texto opcional vindo do form: `undefined` = não mexer;
+ * vazio/só espaços = limpar (null); senão o texto aparado (opcionalmente
+ * em maiúsculas, como os códigos do fornecedor).
+ */
+function normalizeOptionalText(
+  value: string | null | undefined,
+  upper = false,
+): string | null | undefined {
+  if (value === undefined) return undefined;
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  return upper ? trimmed.toUpperCase() : trimmed;
+}
+
+type CodeFields = {
+  id: number;
+  sku: string | null;
+  sku2: string | null;
+  sku2_alt: string | null;
+};
+
+/**
+ * Ordena resultados de busca exata pela prioridade do campo que bateu:
+ * sku → sku2 → sku2_alt → id; empate pelo menor id.
+ */
+export function rankExactCodeMatches<T extends CodeFields>(
+  rows: T[],
+  code: string,
+): T[] {
+  const term = code.trim().toUpperCase();
+  const rank = (p: T) => {
+    if (p.sku?.toUpperCase() === term) return 0;
+    if (p.sku2?.toUpperCase() === term) return 1;
+    if (p.sku2_alt?.toUpperCase() === term) return 2;
+    return 3; // bateu pelo id
+  };
+  return [...rows].sort((a, b) => rank(a) - rank(b) || a.id - b.id);
+}
 
 @Injectable()
 export class ProductsService {
@@ -85,6 +152,8 @@ export class ProductsService {
           productData.is_featured !== undefined
             ? productData.is_featured
             : false,
+        label_text: normalizeOptionalText(productData.label_text),
+        sku2_alt: normalizeOptionalText(productData.sku2_alt, true),
       })
       .select()
       .single();
@@ -102,28 +171,49 @@ export class ProductsService {
    * Lista todos os produtos (com paginação opcional).
    *
    * `publicView` (visitante/cliente): só produtos ativos, só colunas
-   * públicas (sem custo/fornecedor) e no máximo
-   * PUBLIC_PRODUCTS_MAX_LIMIT por página. Staff recebe tudo.
+   * públicas (sem custo/fornecedor), sempre "mais novos primeiro" e no
+   * máximo PUBLIC_PRODUCTS_MAX_LIMIT por página. Staff recebe tudo.
+   *
+   * Staff com busca, na página 1: os produtos cujo código bate EXATAMENTE
+   * (sku, sku2, sku2_alt ou id) vêm primeiro, marcados com `exact_match` —
+   * buscar "7" não enterra mais o item 7 no meio de 17, 70, 107...
    */
-  async findAll(
-    page = 1,
-    limit = 50,
-    isActive?: boolean,
-    search?: string,
-    categoryId?: number,
-    isFeatured?: boolean,
-    publicView = false,
-  ) {
-    if (publicView) {
-      limit = Math.min(limit, PUBLIC_PRODUCTS_MAX_LIMIT);
-    }
+  async findAll(options: FindProductsOptions = {}) {
+    const {
+      page = 1,
+      isActive,
+      search,
+      categoryId,
+      isFeatured,
+      publicView = false,
+    } = options;
+    const sort: ProductSort = publicView
+      ? 'newest'
+      : (options.sort ?? 'newest');
+    // PostgREST devolve no máximo 1000 linhas por requisição (max_rows);
+    // pedir mais só fazia o front achar que tinha recebido tudo.
+    const limit = Math.min(
+      options.limit ?? 50,
+      publicView ? PUBLIC_PRODUCTS_MAX_LIMIT : STAFF_PRODUCTS_MAX_LIMIT,
+    );
 
     let query = this.supabase
       .from('products')
       .select(publicView ? PUBLIC_PRODUCT_SELECT : STAFF_PRODUCT_SELECT, {
         count: 'exact',
-      })
-      .order('created_at', { ascending: false });
+      });
+
+    query =
+      sort === 'code'
+        ? // "Em ordem crescente" pelo número do item; SKU não numérico no fim
+          query
+            .order('sku_sort', { ascending: true, nullsFirst: false })
+            .order('id', { ascending: true })
+        : // `id` desempata produtos de uma mesma importação (mesmo created_at),
+          // senão a paginação repetia/pulava itens
+          query
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false });
 
     if (publicView) {
       query = query.eq('is_active', true);
@@ -136,7 +226,7 @@ export class ProductsService {
     }
 
     const searchFilter = buildIlikeOr(
-      publicView ? ['name', 'sku'] : ['name', 'sku', 'sku2'],
+      publicView ? ['name', 'sku'] : ['name', 'sku', 'sku2', 'sku2_alt'],
       search,
     );
     if (searchFilter) {
@@ -160,14 +250,82 @@ export class ProductsService {
       );
     }
 
+    // O select muda entre visão pública e de staff; o parser de tipos do
+    // supabase-js não resolve essa união, então tipamos só o que usamos.
+    const baseRows = (data ?? []) as unknown as ProductListRow[];
+    let rows: ProductListRow[] = baseRows;
+
+    if (!publicView && searchFilter && page === 1) {
+      const exact = await this.findExactCodeMatches(search, {
+        isActive,
+        categoryId,
+        isFeatured,
+      });
+      if (exact.length > 0) {
+        const exactIds = new Set(exact.map((p) => p.id));
+        rows = [
+          ...exact.map((p) => ({ ...p, exact_match: true })),
+          ...baseRows.filter((p) => !exactIds.has(p.id)),
+        ];
+      }
+    }
+
     return {
-      data,
+      data: rows,
       pagination: {
         page,
         limit,
-        total: count || data.length,
+        total: count ?? baseRows.length,
       },
     };
+  }
+
+  /**
+   * Busca exata por código para o admin/PDV (leitor de código, cadastro
+   * de produto, conferência de duplicidade): sku, sku2 e sku2_alt iguais
+   * ao termo (sem diferenciar maiúsculas), ou o id quando o termo é
+   * numérico. Ordem: sku → sku2 → sku2_alt → id.
+   */
+  async lookup(code: string, activeOnly = false) {
+    return this.findExactCodeMatches(code, {
+      isActive: activeOnly ? true : undefined,
+    });
+  }
+
+  private async findExactCodeMatches(
+    rawCode: string | undefined,
+    filters: { isActive?: boolean; categoryId?: number; isFeatured?: boolean },
+  ) {
+    const code = sanitizeFilterTerm(rawCode);
+    const codeFilter = buildExactCodeOr(['sku', 'sku2', 'sku2_alt'], code);
+    if (!codeFilter) return [];
+
+    const idFilter = /^\d{1,15}$/.test(code) ? `,id.eq.${Number(code)}` : '';
+
+    let query = this.supabase
+      .from('products')
+      .select(STAFF_PRODUCT_SELECT)
+      .or(`${codeFilter}${idFilter}`);
+
+    if (filters.isActive !== undefined) {
+      query = query.eq('is_active', filters.isActive);
+    }
+    if (filters.categoryId) {
+      query = query.eq('category_id', filters.categoryId);
+    }
+    if (filters.isFeatured !== undefined) {
+      query = query.eq('is_featured', filters.isFeatured);
+    }
+
+    const { data, error } = await query.limit(EXACT_MATCH_LIMIT);
+
+    if (error) {
+      throw new InternalServerErrorException(
+        `Erro ao buscar produto por código: ${error.message}`,
+      );
+    }
+
+    return rankExactCodeMatches(data, code);
   }
 
   /**
@@ -252,6 +410,8 @@ export class ProductsService {
         collection: updateProductDto.collection,
         is_active: updateProductDto.is_active,
         is_featured: updateProductDto.is_featured,
+        label_text: normalizeOptionalText(updateProductDto.label_text),
+        sku2_alt: normalizeOptionalText(updateProductDto.sku2_alt, true),
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

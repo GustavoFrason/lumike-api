@@ -9,7 +9,9 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { StaffRole } from '../auth/enums/role.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ALL_STAFF_ROLES, StaffRole } from '../auth/enums/role.enum';
+import type { AuthUser } from '../auth/types/auth-user.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -24,9 +26,16 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  /**
+   * Lista de vendedoras para os seletores (PDV, comissões, transferência
+   * de estoque). Aberto a todo staff — antes era só admin e os seletores
+   * vinham vazios para gestor e vendedora. Revendedora recebe só ela
+   * mesma; ninguém recebe e-mail.
+   */
+  @Roles(...ALL_STAFF_ROLES)
   @Get('sellers')
-  findSellers() {
-    return this.usersService.findSellers();
+  findSellers(@CurrentUser() user: AuthUser) {
+    return this.usersService.findSellers(user);
   }
 
   @Get('roles')

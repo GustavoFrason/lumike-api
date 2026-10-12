@@ -99,6 +99,64 @@ describe('PurchaseImportService', () => {
       expect(mockSupabase.in).not.toHaveBeenCalled();
     });
 
+    describe('kits e palavras-chave', () => {
+      /** Catálogo vazio e categoria sugerida encontrada. */
+      const mockNewProductLookups = () => {
+        mockSupabase.in.mockResolvedValue({ data: [], error: null });
+        mockSupabase.maybeSingle.mockResolvedValue({
+          data: { id: 3 },
+          error: null,
+        });
+      };
+
+      it('cataloga peça que só cita a embalagem ("KIT 12 BRINCOS COM CAIXA")', async () => {
+        mockNewProductLookups();
+        const buffer = buildWorkbookBuffer([
+          ['K1', 'KIT 12 BRINCOS COM CAIXA', 2, 60, 240],
+        ]);
+
+        const result = await service.buildPreview(buffer);
+
+        expect(result.naoCatalogaveis).toHaveLength(0);
+        expect(result.novos).toHaveLength(1);
+        expect(result.novos[0]).toMatchObject({
+          pieces_per_kit: 12,
+          pieces_per_kit_suggested: true,
+          category_name: 'Brincos', // categoria pela descrição sem "KIT 12"
+          category_low_confidence: false,
+          // preview segue por unidade comprada (kit); o confirm divide
+          quantity: 2,
+          unit_cost: 60,
+          suggested_price: 240,
+        });
+      });
+
+      it('palavra-chave de exclusão só conta no início de palavra ("ENCAIXE" ≠ CAIXA)', async () => {
+        mockNewProductLookups();
+        const buffer = buildWorkbookBuffer([
+          ['P1', 'PINGENTE ENCAIXE DOURADO', 1, 10],
+          ['S1', 'SACOLAS KRAFT', 1, 5],
+        ]);
+
+        const result = await service.buildPreview(buffer);
+
+        expect(result.novos.map((r) => r.sku2)).toEqual(['P1']);
+        expect(result.naoCatalogaveis.map((r) => r.sku2)).toEqual(['S1']);
+      });
+
+      it('produto comum sai com 1 peça por unidade, sem sugestão', async () => {
+        mockNewProductLookups();
+        const buffer = buildWorkbookBuffer([['A1', 'ANEL SOLITARIO', 1, 10]]);
+
+        const result = await service.buildPreview(buffer);
+
+        expect(result.novos[0]).toMatchObject({
+          pieces_per_kit: 1,
+          pieces_per_kit_suggested: false,
+        });
+      });
+    });
+
     it('consolida SKU duplicado dentro do mesmo arquivo (soma quantidade, fica com o último custo)', async () => {
       const buffer = buildWorkbookBuffer([
         ['1171530601522', 'ANEL TESTE', 2, 10],
@@ -126,7 +184,15 @@ describe('PurchaseImportService', () => {
 
       mockSupabase.in.mockResolvedValueOnce({
         data: [
-          { id: 9, sku2: 'EXIST1', name: 'Anel Existente', current_stock: 3 },
+          {
+            id: 9,
+            sku2: 'EXIST1',
+            sku2_alt: null,
+            name: 'Anel Existente',
+            current_stock: 3,
+            price: 40,
+            is_active: true,
+          },
         ],
         error: null,
       });
@@ -138,8 +204,73 @@ describe('PurchaseImportService', () => {
         id: 9,
         name: 'Anel Existente',
         current_stock: 3,
+        price: 40,
+        sku2: 'EXIST1',
+        sku2_alt: null,
+        matched_by: 'sku2',
+        match_count: 1,
       });
       expect(result.novos).toHaveLength(0);
+    });
+
+    it('reconhece o produto pelo 2º código (sku2_alt), sem diferenciar maiúsculas', async () => {
+      const buffer = buildWorkbookBuffer([['ab-77 ', 'ANEL', 1, 10]]);
+
+      mockSupabase.in
+        .mockResolvedValueOnce({ data: [], error: null }) // sku2
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 4,
+              sku2: 'X1',
+              sku2_alt: 'AB-77',
+              name: 'Anel',
+              current_stock: 1,
+              price: 30,
+              is_active: true,
+            },
+          ],
+          error: null,
+        }); // sku2_alt
+
+      const result = await service.buildPreview(buffer);
+
+      expect(mockSupabase.in).toHaveBeenNthCalledWith(
+        2,
+        'sku2_alt',
+        expect.arrayContaining(['AB-77']),
+      );
+      expect(result.atualizacoes).toHaveLength(1);
+      expect(result.atualizacoes[0].existing_product).toMatchObject({
+        id: 4,
+        matched_by: 'sku2_alt',
+      });
+    });
+
+    it('com código duplicado no catálogo escolhe de forma determinística e avisa', async () => {
+      const buffer = buildWorkbookBuffer([['DUP', 'ANEL', 1, 10]]);
+      const product = (id: number, is_active: boolean) => ({
+        id,
+        sku2: 'DUP',
+        sku2_alt: null,
+        name: `Anel ${id}`,
+        current_stock: 0,
+        price: 30,
+        is_active,
+      });
+
+      mockSupabase.in.mockResolvedValueOnce({
+        data: [product(30, true), product(12, false), product(20, true)],
+        error: null,
+      });
+
+      const result = await service.buildPreview(buffer);
+
+      // ativo antes de inativo, depois menor id
+      expect(result.atualizacoes[0].existing_product).toMatchObject({
+        id: 20,
+        match_count: 3,
+      });
     });
 
     it('usa o "Valor de Venda" da planilha como preço sugerido quando preenchido', async () => {
@@ -235,11 +366,60 @@ describe('PurchaseImportService', () => {
               product_id: 5,
               quantity: 1,
               unit_cost: 20,
+              total_cost: 20,
               price: null,
+              sku2_alt: null,
             }),
           ],
         }),
       );
+    });
+
+    it('desmembra kit em peças: estoque, custo e preço por peça, total exato', async () => {
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: { id: 2 },
+        error: null,
+      });
+      mockSupabase.rpc.mockResolvedValueOnce({ data: 43, error: null });
+
+      await service.confirm({
+        items: [
+          {
+            is_new: true,
+            sku2: 'KIT12',
+            sku2_alt: ' k12b ',
+            name: 'KIT 12 BRINCOS',
+            quantity: 2, // kits
+            unit_cost: 10, // custo do kit
+            price: 120, // preço do kit inteiro (planilha)
+            pieces_per_kit: 12,
+          },
+          {
+            is_new: false,
+            product_id: 7,
+            quantity: 1,
+            unit_cost: 10,
+            pieces_per_kit: 3,
+          },
+        ],
+      });
+
+      const payload = (mockSupabase.rpc.mock.calls[0] as unknown[])[1] as {
+        p_items: Record<string, unknown>[];
+      };
+      expect(payload.p_items[0]).toMatchObject({
+        quantity: 24, // peças
+        unit_cost: 0.83, // 10 / 12, em centavos
+        total_cost: 20, // 2 kits × 10 (exato)
+        price: 10, // 120 / 12
+        sku2_alt: 'K12B',
+      });
+      expect(payload.p_items[1]).toMatchObject({
+        quantity: 3,
+        unit_cost: 3.33,
+        total_cost: 10,
+        sku2_alt: null, // atualização não grava 2º código
+      });
     });
 
     it('rejeita item novo sem sku2/name antes de chamar o banco', async () => {

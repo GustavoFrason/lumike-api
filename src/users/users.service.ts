@@ -9,11 +9,16 @@ import type { Database } from '../types/supabase';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { StaffRole } from '../auth/enums/role.enum';
+import type { AuthUser } from '../auth/types/auth-user.type';
 
 /**
  * Colunas devolvidas após create/update. Nunca inclui `password`: um
  * `.select()` vazio devolvia o hash bcrypt na resposta da API.
  */
+/** O que os seletores de vendedora precisam — sem e-mail. */
+const SELLER_COLUMNS = 'id, name, commission_rate, is_active' as const;
+
 export const USER_SAFE_COLUMNS =
   'id, name, email, role_id, commission_rate, is_active, whatsapp, created_at, updated_at' as const;
 
@@ -52,9 +57,27 @@ export class UsersService {
   }
 
   /**
-   * Lista todos os usuários com o papel 'vendedor'
+   * Lista as vendedoras (revendedoras) ativas — só o necessário para os
+   * seletores, sem e-mail. A própria revendedora recebe só ela mesma.
+   * `is_active` vai junto porque o cadastro de produto filtra por ele (sem
+   * o campo, a lista de "destino inicial do estoque" vinha sempre vazia).
    */
-  async findSellers() {
+  async findSellers(user?: AuthUser) {
+    if (user?.role === StaffRole.VENDEDOR) {
+      const { data: self, error } = await this.supabase
+        .from('users')
+        .select(SELLER_COLUMNS)
+        .eq('id', user.sub)
+        .maybeSingle();
+
+      if (error) {
+        throw new InternalServerErrorException(
+          `Erro ao buscar vendedora: ${error.message}`,
+        );
+      }
+      return self ? [self] : [];
+    }
+
     const { data: role, error: roleError } = await this.supabase
       .from('roles')
       .select('id')
@@ -67,9 +90,10 @@ export class UsersService {
 
     const { data: users, error } = await this.supabase
       .from('users')
-      .select('id, name, email, commission_rate')
+      .select(SELLER_COLUMNS)
       .eq('role_id', role.id)
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .order('name');
 
     if (error) {
       throw new InternalServerErrorException(

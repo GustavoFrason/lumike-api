@@ -23,12 +23,29 @@ export interface ImportRow {
    */
   sale_price: number;
   duplicated_in_file?: boolean;
+  /**
+   * Peças por kit (kit = N peças iguais vendidas soltas). 1 = produto comum.
+   * Sugerido pela descrição ("KIT 12 BRINCOS" → 12) e editável no preview;
+   * quantidade, custo e preço da linha continuam POR UNIDADE COMPRADA (kit)
+   * — quem converte pra peças é o confirm (ver kit-conversion.util).
+   */
+  pieces_per_kit: number;
+  /** true quando pieces_per_kit veio da descrição (destacar pra conferência). */
+  pieces_per_kit_suggested: boolean;
 }
 
 export interface ExistingProductRef {
   id: number;
   name: string;
   current_stock: number;
+  /** Preço atual (por peça) — pra conferir se não ficou preço de kit. */
+  price: number;
+  sku2: string | null;
+  sku2_alt: string | null;
+  /** Por qual código o produto foi reconhecido. */
+  matched_by: 'sku2' | 'sku2_alt';
+  /** Quantos produtos têm esse código (>1 = duplicata no catálogo). */
+  match_count: number;
 }
 
 /** Bucket "novo produto": sku2 não bate com nenhum produto já cadastrado. */
@@ -41,6 +58,8 @@ export interface NewProductRow extends ImportRow {
    * sale_price (coluna "Valor de Venda") quando preenchido na planilha,
    * senão unit_cost × 3 — editável no preview antes de confirmar (ver
    * ConfirmImportItemDto.price, que é o que de fato persiste esse valor).
+   * POR UNIDADE COMPRADA: num kit é o preço do kit inteiro; o confirm
+   * divide pelas peças.
    */
   suggested_price: number;
 }

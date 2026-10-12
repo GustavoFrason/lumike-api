@@ -9,6 +9,9 @@ import {
   IsDateString,
 } from 'class-validator';
 
+/** Cabe numa etiqueta Joia 27x15mm (2 linhas de ~12 caracteres). */
+export const LABEL_TEXT_MAX_LENGTH = 24;
+
 export class CreateProductDto {
   // Opcional de propósito: não é mais digitado no admin — vira o próprio
   // `id` (auto-incremento) via trigger fn_generate_product_sku quando vem
@@ -20,6 +23,20 @@ export class CreateProductDto {
   @IsString()
   @IsNotEmpty({ message: 'SKU Zarpellon (código do fornecedor) é obrigatório' })
   sku2: string;
+
+  /** 2º código do fornecedor (a Zarpellon tem 2 em alguns produtos). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50, { message: 'Código Zarpellon 2: no máximo 50 caracteres' })
+  sku2_alt?: string | null;
+
+  /** Linha extra impressa na etiqueta (ex: LINHA PRATA, ARO 16, 45cm). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(LABEL_TEXT_MAX_LENGTH, {
+    message: `Texto da etiqueta: no máximo ${LABEL_TEXT_MAX_LENGTH} caracteres`,
+  })
+  label_text?: string | null;
 
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })

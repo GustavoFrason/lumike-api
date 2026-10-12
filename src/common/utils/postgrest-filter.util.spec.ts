@@ -1,4 +1,27 @@
-import { buildIlikeOr } from './postgrest-filter.util';
+import { buildExactCodeOr, buildIlikeOr } from './postgrest-filter.util';
+
+describe('buildExactCodeOr', () => {
+  it('matches the code exactly in every column, in as-typed/upper/lower case', () => {
+    expect(buildExactCodeOr(['sku', 'sku2'], ' ab12 ')).toBe(
+      'sku.in.("ab12","AB12"),sku2.in.("ab12","AB12")',
+    );
+  });
+
+  it('dedupes variants for numeric codes', () => {
+    expect(buildExactCodeOr(['sku'], '7')).toBe('sku.in.("7")');
+  });
+
+  it('keeps _ and % literal (no wildcard) and strips separators', () => {
+    expect(buildExactCodeOr(['sku2'], 'A_1%,X')).toBe(
+      'sku2.in.("A_1% X","a_1% x")',
+    );
+  });
+
+  it('returns null for empty input', () => {
+    expect(buildExactCodeOr(['sku'], '   ')).toBeNull();
+    expect(buildExactCodeOr(['sku'], undefined)).toBeNull();
+  });
+});
 
 describe('buildIlikeOr', () => {
   it('builds a quoted ilike filter for every column', () => {

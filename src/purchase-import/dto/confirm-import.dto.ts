@@ -9,9 +9,12 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
+import { MAX_PIECES_PER_KIT } from '../kit-conversion.util';
 
 /**
  * Item já revisado/editado pelo usuário no preview (só os buckets "novo
@@ -60,6 +63,23 @@ export class ConfirmImportItemDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  /**
+   * Peças por kit (kit = N peças iguais vendidas soltas). quantity,
+   * unit_cost e price continuam POR UNIDADE COMPRADA (kit); o service
+   * converte pra peças antes de gravar. Ausente = 1 (produto comum).
+   */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(MAX_PIECES_PER_KIT)
+  pieces_per_kit?: number;
+
+  /** 2º código da Zarpellon (só usado quando is_new = true). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  sku2_alt?: string;
 }
 
 export class ConfirmImportDto {

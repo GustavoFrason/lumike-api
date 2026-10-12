@@ -680,6 +680,10 @@ export interface Database {
           short_description: string;
           collection: string | null;
           supplier_id: number | null;
+          label_text: string | null;
+          sku2_alt: string | null;
+          /** Coluna gerada (valor numérico de sku) — somente leitura. */
+          sku_sort: number | null;
         };
         Insert: {
           id?: number;
@@ -703,6 +707,8 @@ export interface Database {
           short_description: string;
           collection?: string | null;
           supplier_id?: number | null;
+          label_text?: string | null;
+          sku2_alt?: string | null;
         };
         Update: {
           id?: number;
@@ -726,6 +732,8 @@ export interface Database {
           short_description?: string;
           collection?: string | null;
           supplier_id?: number | null;
+          label_text?: string | null;
+          sku2_alt?: string | null;
         };
         Relationships: [
           {
@@ -1197,6 +1205,84 @@ export interface Database {
           },
         ];
       };
+      reseller_settlements: {
+        Row: {
+          id: number;
+          reseller_user_id: number;
+          period_start: string | null;
+          period_end: string;
+          orders_count: number;
+          pieces_count: number;
+          sales_total: number;
+          commission_base: number;
+          commission_rate: number;
+          commission_amount: number;
+          amount_due: number;
+          amount_paid: number;
+          payment_method: string | null;
+          notes: string | null;
+          cash_flow_id: number | null;
+          created_by: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: never;
+          reseller_user_id: number;
+          period_start?: string | null;
+          period_end: string;
+          orders_count?: number;
+          pieces_count?: number;
+          sales_total?: number;
+          commission_base?: number;
+          commission_rate: number;
+          commission_amount?: number;
+          amount_due: number;
+          amount_paid?: number;
+          payment_method?: string | null;
+          notes?: string | null;
+          cash_flow_id?: number | null;
+          created_by?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: never;
+          reseller_user_id?: number;
+          period_start?: string | null;
+          period_end?: string;
+          orders_count?: number;
+          pieces_count?: number;
+          sales_total?: number;
+          commission_base?: number;
+          commission_rate?: number;
+          commission_amount?: number;
+          amount_due?: number;
+          amount_paid?: number;
+          payment_method?: string | null;
+          notes?: string | null;
+          cash_flow_id?: number | null;
+          created_by?: number | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      reseller_settlement_orders: {
+        Row: {
+          settlement_id: number;
+          order_id: number;
+          reseller_user_id: number;
+        };
+        Insert: {
+          settlement_id: number;
+          order_id: number;
+          reseller_user_id: number;
+        };
+        Update: {
+          settlement_id?: number;
+          order_id?: number;
+          reseller_user_id?: number;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       vw_cash_flow_balance: {
@@ -1275,6 +1361,10 @@ export interface Database {
           p_stock_location_user_id?: number | null;
           p_total_amount: number | null;
           p_transaction_id: string | null;
+          /** NULL = agora (migration 20261010000003). */
+          p_sale_date?: string | null;
+          /** FALSE = venda da mala de revendedora, não lança no caixa. */
+          p_record_cash?: boolean;
         };
         Returns: number;
       };
@@ -1283,6 +1373,20 @@ export interface Database {
           p_items: Json | null;
           p_notes: string | null;
           p_supplier_id: number | null;
+        };
+        Returns: number;
+      };
+      fn_create_reseller_settlement: {
+        Args: {
+          p_reseller: number;
+          p_period_start: string | null;
+          p_period_end: string;
+          p_order_ids: number[];
+          p_amount_paid: number;
+          p_payment_method: string | null;
+          p_notes: string | null;
+          p_created_by: number | null;
+          p_expected_amount_due: number;
         };
         Returns: number;
       };

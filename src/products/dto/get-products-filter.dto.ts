@@ -1,7 +1,23 @@
-import { IsOptional, IsBoolean, IsString, IsInt, Min } from 'class-validator';
+import {
+  IsOptional,
+  IsBoolean,
+  IsString,
+  IsInt,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import type { ProductSort } from '../products.service';
 
 export class GetProductsFilterDto {
+  /**
+   * `newest` (padrão) = mais novos primeiro; `code` = número do item em
+   * ordem crescente (tela de Produtos/Etiquetas). Ignorado na vitrine.
+   */
+  @IsOptional()
+  @IsIn(['newest', 'code'])
+  sort?: ProductSort;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

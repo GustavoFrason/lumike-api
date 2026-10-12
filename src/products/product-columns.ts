@@ -3,8 +3,8 @@
  * (vitrine, página de produto, favoritos).
  *
  * Fica de fora tudo que é dado interno de gestão: `cost_price` (custo),
- * `sku2` (código do fornecedor), `supplier_id`, `min_stock`,
- * `purchase_date` e `updated_at`. Staff continua recebendo `*`.
+ * `sku2`/`sku2_alt` (códigos do fornecedor), `supplier_id`, `min_stock`,
+ * `purchase_date`, `label_text` e `updated_at`. Staff continua recebendo `*`.
  */
 export const PUBLIC_PRODUCT_COLUMNS =
   'id, sku, name, slug, description, short_description, price, preco_promocional, current_stock, category_id, colecao_id, collection, is_active, is_featured, created_at' as const;
@@ -20,3 +20,10 @@ export const STAFF_PRODUCT_SELECT = `*, ${PRODUCT_RELATIONS}` as const;
 
 /** Teto de itens por página na listagem pública (evita dump do catálogo). */
 export const PUBLIC_PRODUCTS_MAX_LIMIT = 100;
+
+/**
+ * Teto por página para staff = `max_rows` do PostgREST (1000). Acima disso
+ * o banco corta em silêncio; para "todos os produtos" o front pagina
+ * (productsService.getAllPages).
+ */
+export const STAFF_PRODUCTS_MAX_LIMIT = 1000;
