@@ -55,8 +55,6 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-/generated/prisma
-
 # Dumps de dados de produção (scripts/backup-before-wipe.ts) — nunca versionar
 /backups
 
@@ -71,3 +69,6 @@ typecheck*.txt
 typecheck*.log
 test_output.txt
 test_results.json
+
+# Notas fiscais e planilhas reais usadas em testes manuais: não versionar
+/notas_xml

@@ -119,8 +119,8 @@ export class PurchasesService {
         );
       }
 
-      // Stock is updated via TRIGGER `tg_purchase_items_ai` in COMPLETE_SCHEMA.sql
-      // So we don't need to manually update product stock here.
+      // O estoque é atualizado pelo trigger `tg_purchase_items_ai` (ver
+      // supabase/migrations), então não precisa mexer no estoque aqui.
     }
 
     return purchase;
