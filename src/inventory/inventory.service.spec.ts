@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import {
   createMockSupabaseClient,
@@ -121,6 +124,52 @@ describe('InventoryService', () => {
           quantity: 999,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('getAllSellersStock', () => {
+    const row = (user_id: number, product_id: number, quantity: number) => ({
+      user_id,
+      quantity,
+      product_id,
+      users: { id: user_id, name: user_id === 1 ? 'Ana' : 'Bia' },
+      products: {
+        id: product_id,
+        name: 'Anel',
+        sku: String(product_id),
+        price: 10,
+      },
+    });
+
+    it('pagina além das 1000 linhas do PostgREST e agrupa por revendedora', async () => {
+      const firstPage = Array.from({ length: 1000 }, (_, i) =>
+        row(1, i + 1, 1),
+      );
+      mockSupabase.range
+        .mockResolvedValueOnce({ data: firstPage, error: null })
+        .mockResolvedValueOnce({ data: [row(2, 5, 3)], error: null });
+
+      const result = await service.getAllSellersStock();
+
+      expect(mockSupabase.range).toHaveBeenNthCalledWith(1, 0, 999);
+      expect(mockSupabase.range).toHaveBeenNthCalledWith(2, 1000, 1999);
+      expect(
+        result.map((s) => [s.name, s.items.length, s.total_items]),
+      ).toEqual([
+        ['Ana', 1000, 1000],
+        ['Bia', 1, 3],
+      ]);
+    });
+
+    it('converte erro do banco em InternalServerErrorException', async () => {
+      mockSupabase.range.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'boom' },
+      });
+
+      await expect(service.getAllSellersStock()).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

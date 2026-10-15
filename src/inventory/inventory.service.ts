@@ -28,6 +28,7 @@ import {
   StockTransferDto,
 } from './dto/stock-movement.dto';
 import { extractInsufficientStockMessage } from '../common/utils/stock-error.util';
+import { fetchAllPages } from '../common/utils/fetch-all-pages.util';
 
 interface UserJoinRow {
   id: number;
@@ -285,23 +286,31 @@ export class InventoryService {
    * abrir um relatório por pessoa.
    */
   async getAllSellersStock() {
-    const { data, error } = await this.supabase
-      .from('inventory_locations')
-      .select(
-        `
-        user_id,
-        quantity,
-        product_id,
-        users:user_id (id, name),
-        products:product_id (id, name, sku, price)
-      `,
-      )
-      .not('user_id', 'is', null)
-      .gt('quantity', 0);
-
-    if (error) {
+    // Pagina: uma consulta só parava em 1000 linhas (max_rows do PostgREST)
+    // e o estoque das revendedoras vinha incompleto em silêncio.
+    let rows: StockLocationWithUserAndProductRow[];
+    try {
+      rows = await fetchAllPages<StockLocationWithUserAndProductRow>(
+        (from, to) =>
+          this.supabase
+            .from('inventory_locations')
+            .select(
+              `
+              user_id,
+              quantity,
+              product_id,
+              users:user_id (id, name),
+              products:product_id (id, name, sku, price)
+            `,
+            )
+            .not('user_id', 'is', null)
+            .gt('quantity', 0)
+            .order('id')
+            .range(from, to),
+      );
+    } catch (err) {
       throw new InternalServerErrorException(
-        `Erro ao buscar estoque dos revendedores: ${error.message}`,
+        `Erro ao buscar estoque dos revendedores: ${(err as Error).message}`,
       );
     }
 
@@ -320,8 +329,6 @@ export class InventoryService {
       }
     >();
 
-    const rows = (data ||
-      []) as unknown as StockLocationWithUserAndProductRow[];
     for (const item of rows) {
       const user = Array.isArray(item.users) ? item.users[0] : item.users;
       const product = Array.isArray(item.products)

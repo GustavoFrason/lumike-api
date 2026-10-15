@@ -39,6 +39,7 @@ const CHAINABLE_METHODS = [
   'ilike',
   'or',
   'is',
+  'not',
   'order',
   'range',
   'limit',
