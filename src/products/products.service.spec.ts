@@ -61,6 +61,32 @@ describe('ProductsService', () => {
       expect(result.id).toBe(2);
       expect(mockSupabase.insert).toHaveBeenCalled();
     });
+
+    it('sempre cria com estoque 0 (o estoque inicial entra por movimentação)', async () => {
+      mockSupabase.single.mockResolvedValue({ data: { id: 2 }, error: null });
+
+      await service.create(createDto); // createDto pede current_stock: 10
+
+      expect(mockSupabase.insert).toHaveBeenCalledWith(
+        expect.objectContaining({ current_stock: 0 }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('não grava current_stock (o estoque só muda por movimentação)', async () => {
+      mockSupabase.single
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null }) // findOne
+        .mockResolvedValueOnce({ data: { id: 1 }, error: null }); // update
+
+      await service.update(1, { name: 'Anel', current_stock: 4 });
+
+      const payload = (
+        mockSupabase.update.mock.calls[0] as unknown[]
+      )[0] as Record<string, unknown>;
+      expect(payload.name).toBe('Anel');
+      expect(payload).not.toHaveProperty('current_stock');
+    });
   });
 
   describe('findAll', () => {
