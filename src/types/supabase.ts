@@ -363,6 +363,8 @@ export interface Database {
           to_user_id: number | null;
           quantity: number;
           notes: string | null;
+          batch_id: number | null;
+          created_by: number | null;
           created_at: string | null;
         };
         Insert: {
@@ -372,6 +374,8 @@ export interface Database {
           to_user_id?: number | null;
           quantity: number;
           notes?: string | null;
+          batch_id?: number | null;
+          created_by?: number | null;
           created_at?: string | null;
         };
         Update: {
@@ -381,9 +385,18 @@ export interface Database {
           to_user_id?: number | null;
           quantity?: number;
           notes?: string | null;
+          batch_id?: number | null;
+          created_by?: number | null;
           created_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'inventory_transfers_batch_id_fkey';
+            columns: ['batch_id'];
+            isOneToOne: false;
+            referencedRelation: 'inventory_transfer_batches';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'inventory_transfers_product_id_fkey';
             columns: ['product_id'];
@@ -1283,6 +1296,61 @@ export interface Database {
         };
         Relationships: [];
       };
+      inventory_transfer_batches: {
+        Row: {
+          id: number;
+          from_user_id: number | null;
+          to_user_id: number | null;
+          notes: string | null;
+          total_items: number;
+          total_quantity: number;
+          created_by: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: never;
+          from_user_id?: number | null;
+          to_user_id?: number | null;
+          notes?: string | null;
+          total_items?: number;
+          total_quantity?: number;
+          created_by?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: never;
+          from_user_id?: number | null;
+          to_user_id?: number | null;
+          notes?: string | null;
+          total_items?: number;
+          total_quantity?: number;
+          created_by?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'inventory_transfer_batches_from_user_id_fkey';
+            columns: ['from_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'inventory_transfer_batches_to_user_id_fkey';
+            columns: ['to_user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'inventory_transfer_batches_created_by_fkey';
+            columns: ['created_by'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       vw_cash_flow_balance: {
@@ -1387,6 +1455,16 @@ export interface Database {
           p_notes: string | null;
           p_created_by: number | null;
           p_expected_amount_due: number;
+        };
+        Returns: number;
+      };
+      fn_transfer_stock_batch: {
+        Args: {
+          p_from_user_id: number | null;
+          p_to_user_id: number | null;
+          p_notes: string | null;
+          p_created_by: number | null;
+          p_items: Json;
         };
         Returns: number;
       };
