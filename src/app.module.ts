@@ -32,6 +32,7 @@ import { CustomerImportModule } from './customer-import/customer-import.module';
 import { WarrantiesModule } from './warranties/warranties.module';
 import { UsersModule } from './users/users.module';
 import { ResellersModule } from './resellers/resellers.module';
+import { TransferBatchesModule } from './transfer-batches/transfer-batches.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { ResellersModule } from './resellers/resellers.module';
     WarrantiesModule,
     UsersModule,
     ResellersModule,
+    TransferBatchesModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
