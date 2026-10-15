@@ -96,33 +96,17 @@ export class ProductsService {
   ) {}
 
   /**
-   * Cria um novo produto
+   * Cria um novo produto.
+   *
+   * O produto SEMPRE nasce com estoque 0: `current_stock` é só o espelho do
+   * estoque Central (inventory_locations), mantido por fn_adjust_stock. O
+   * estoque inicial entra como movimentação (entrada/compra) — gravar o
+   * número aqui criava divergência entre o cadastro e o controle por local.
    */
-  async create(
-    createProductDto: CreateProductDto & { existingProductId?: number },
-  ) {
-    const { existingProductId, ...productData } = createProductDto;
+  async create(createProductDto: CreateProductDto) {
+    const productData = createProductDto;
 
-    // If existingProductId is provided, UPDATE instead of CREATE
-    if (existingProductId) {
-      // Get current stock to sum with new stock
-      const { data: current } = await this.supabase
-        .from('products')
-        .select('current_stock')
-        .eq('id', existingProductId)
-        .single();
-
-      const newTotalStock =
-        (current?.current_stock || 0) + (productData.current_stock || 0);
-
-      // Update existing product with new data and summed stock
-      return this.update(existingProductId, {
-        ...productData,
-        current_stock: newTotalStock,
-      });
-    }
-
-    // Normal creation flow. `sku` não é mais checado por duplicidade aqui:
+    // `sku` não é mais checado por duplicidade aqui:
     // não é mais digitado pelo usuário (vira o `id` autoincrementado via
     // trigger fn_generate_product_sku, sempre único por natureza). Repetir
     // o `sku2` (SKU do fornecedor) é um caso válido — é o que aciona o
@@ -144,7 +128,7 @@ export class ProductsService {
         supplier_id: productData.supplier_id,
         colecao_id: productData.colecao_id,
         collection: productData.collection,
-        current_stock: productData.current_stock || 0,
+        current_stock: 0,
         min_stock: productData.min_stock || 0,
         is_active:
           productData.is_active !== undefined ? productData.is_active : true,
@@ -402,7 +386,11 @@ export class ProductsService {
         preco_promocional: updateProductDto.preco_promocional,
         cost_price: updateProductDto.cost_price,
         purchase_date: updateProductDto.purchase_date,
-        current_stock: updateProductDto.current_stock,
+        // `current_stock` NÃO é gravado na edição: ele espelha o estoque
+        // Central e só muda por movimentação (entrada, saída, conferência,
+        // compra, venda, transferência). Gravar aqui fazia o cadastro
+        // divergir do controle por local (ex: lista mostrando 4 e a
+        // transferência recusando por só existir 1).
         min_stock: updateProductDto.min_stock,
         category_id: updateProductDto.category_id,
         supplier_id: updateProductDto.supplier_id,

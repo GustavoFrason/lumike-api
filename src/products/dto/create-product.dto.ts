@@ -91,6 +91,10 @@ export class CreateProductDto {
   @IsString()
   collection?: string; // Novo campo simples (string)
 
+  /**
+   * Aceito só por compatibilidade e IGNORADO: o produto nasce com estoque
+   * 0 e o estoque inicial entra como movimentação — ver ProductsService.create.
+   */
   @IsOptional()
   @IsNumber()
   @Min(0)

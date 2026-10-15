@@ -88,6 +88,10 @@ export class UpdateProductDto {
   @IsString()
   collection?: string;
 
+  /**
+   * Aceito só por compatibilidade (telas antigas ainda enviam) e IGNORADO:
+   * o estoque só muda por movimentação — ver ProductsService.update.
+   */
   @IsOptional()
   @IsNumber()
   @Min(0)
