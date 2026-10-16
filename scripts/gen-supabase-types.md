@@ -1,7 +1,8 @@
 # Como regenerar `src/types/supabase.ts`
 
-`lumike-api/src/types/supabase.ts` e `lumike-ui/src/types/supabase.ts` devem
-ser **o mesmo arquivo** (copie um para o outro depois de regenerar).
+Só a API usa estes tipos (`lumike-api/src/types/supabase.ts`). A UI não fala
+com o Supabase: ela chama a API, e a cópia que existia em `lumike-ui` foi
+removida por não ter nenhum uso.
 
 ## Forma oficial (preferida)
 

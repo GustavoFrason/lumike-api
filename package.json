@@ -1,7 +1,7 @@
 {
   "name": "lumike-api",
   "version": "0.1.0",
-  "description": "Backend da plataforma Lumilee (NestJS + Prisma + Supabase)",
+  "description": "Backend da plataforma Lumilee (NestJS + Supabase)",
   "author": "Gustavo Frason",
   "private": true,
   "license": "UNLICENSED",
@@ -28,7 +28,6 @@
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/swagger": "^11.2.1",
     "@nestjs/throttler": "^6.5.0",
     "@supabase/supabase-js": "^2.79.0",
     "bcrypt": "^6.0.0",
@@ -38,8 +37,7 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "swagger-ui-express": "^5.0.1",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -86,25 +84,5 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "prettier"
-    ],
-    "plugins": [
-      "@typescript-eslint",
-      "prettier"
-    ],
-    "rules": {
-      "prettier/prettier": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          "argsIgnorePattern": "^_"
-        }
-      ]
-    }
   }
 }

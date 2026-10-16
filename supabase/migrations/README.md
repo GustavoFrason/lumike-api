@@ -2,9 +2,9 @@
 
 As migrations versionadas são os arquivos `AAAAMMDDHHMMSS_descricao.sql` desta pasta, aplicadas em ordem.
 
-## ⚠️ Não use `COMPLETE_SCHEMA.sql`
+## ⚠️ Não use o SQL de `../legacy`
 
-O `COMPLETE_SCHEMA.sql` é um snapshot antigo (nov/2025) e **está desatualizado**. Entre outros problemas, ele recria os triggers de estoque em `order_items`, o que desconta o estoque duas vezes por venda. Ele também cria um admin com senha conhecida. Está aqui só como referência histórica.
+O `COMPLETE_SCHEMA.sql` (snapshot de nov/2025) e os scripts avulsos do início do projeto ficam em `../legacy`, só como referência histórica. Eles **estão desatualizados**: o `COMPLETE_SCHEMA.sql`, por exemplo, recria os triggers de estoque em `order_items`, o que desconta o estoque duas vezes por venda. Veja `../legacy/README.md`.
 
 ## Como aplicar
 
