@@ -42,6 +42,12 @@ export interface ExistingProductRef {
   price: number;
   sku2: string | null;
   sku2_alt: string | null;
+  /**
+   * Fornecedor cadastrado no produto. A tela avisa quando é diferente do
+   * fornecedor escolhido para a importação (código igual de outro
+   * fornecedor não pode somar estoque na peça errada).
+   */
+  supplier_id: number | null;
   /** Por qual código o produto foi reconhecido. */
   matched_by: 'sku2' | 'sku2_alt';
   /** Quantos produtos têm esse código (>1 = duplicata no catálogo). */

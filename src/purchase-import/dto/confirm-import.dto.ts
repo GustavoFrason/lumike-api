@@ -83,6 +83,15 @@ export class ConfirmImportItemDto {
 }
 
 export class ConfirmImportDto {
+  /**
+   * Fornecedor da compra (`suppliers.id`): vai na compra e nos produtos
+   * novos. Ausente = Zarpellon Joias, o comportamento de antes.
+   */
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  supplier_id?: number;
+
   @IsOptional()
   @IsString()
   notes?: string;

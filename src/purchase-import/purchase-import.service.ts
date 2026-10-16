@@ -47,6 +47,11 @@ function escapeRegExp(text: string): string {
 }
 
 const ZARPELLON_SUPPLIER_NAME = 'Zarpellon Joias';
+
+interface SupplierRef {
+  id: number;
+  name: string;
+}
 const FALLBACK_CATEGORY_NAME = 'A classificar';
 
 // Usados só se a chave ainda não existir em site_settings (defensivo — a
@@ -159,7 +164,9 @@ export class PurchaseImportService {
       }
     }
 
-    const supplierId = await this.resolveZarpellonSupplierId();
+    const supplier = dto.supplier_id
+      ? await this.findSupplier(dto.supplier_id)
+      : await this.resolveZarpellonSupplier();
     // O front já manda a data escolhida no calendário (default: hoje no
     // fuso de Brasília — ver getTodayInSaoPaulo em lumike-ui). O fallback
     // aqui é só defensivo (chamada direta na API sem esse campo); usar
@@ -205,8 +212,8 @@ export class PurchaseImportService {
     const { data: purchaseId, error } = await this.supabase.rpc(
       'fn_import_purchase_excel',
       {
-        p_supplier_id: supplierId,
-        p_notes: dto.notes ?? 'Importação de planilha Excel - Zarpellon Joias',
+        p_supplier_id: supplier.id,
+        p_notes: dto.notes ?? `Importação de planilha Excel - ${supplier.name}`,
         p_items: items,
       },
     );
@@ -401,6 +408,7 @@ export class PurchaseImportService {
       is_active: boolean;
       sku2: string | null;
       sku2_alt: string | null;
+      supplier_id: number | null;
     };
     type CandidateMatch = {
       product: Candidate;
@@ -439,7 +447,9 @@ export class PurchaseImportService {
       for (const column of ['sku2', 'sku2_alt'] as const) {
         const { data, error } = await this.supabase
           .from('products')
-          .select('id, sku2, sku2_alt, name, current_stock, price, is_active')
+          .select(
+            'id, sku2, sku2_alt, name, current_stock, price, is_active, supplier_id',
+          )
           .in(column, variants);
 
         if (error) {
@@ -470,6 +480,7 @@ export class PurchaseImportService {
         price: best.product.price,
         sku2: best.product.sku2,
         sku2_alt: best.product.sku2_alt,
+        supplier_id: best.product.supplier_id,
         matched_by: best.matched_by,
         match_count: byId.size,
       });
@@ -560,20 +571,43 @@ export class PurchaseImportService {
     return data.id;
   }
 
-  /** Fornecedor é sempre fixo (Zarpellon) — busca por nome, cria se ainda não existir. */
-  private async resolveZarpellonSupplierId(): Promise<number> {
+  /** Fornecedor escolhido na importação. */
+  private async findSupplier(id: number): Promise<SupplierRef> {
+    const { data, error } = await this.supabase
+      .from('suppliers')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      throw new InternalServerErrorException(
+        `Erro ao buscar fornecedor: ${error.message}`,
+      );
+    }
+    if (!data) {
+      throw new BadRequestException('Fornecedor não encontrado');
+    }
+    return data;
+  }
+
+  /**
+   * Fornecedor padrão quando a importação não diz qual (chamadas de antes
+   * da escolha de fornecedor): Zarpellon, buscada por nome e criada se
+   * ainda não existir.
+   */
+  private async resolveZarpellonSupplier(): Promise<SupplierRef> {
     const { data: existing } = await this.supabase
       .from('suppliers')
-      .select('id')
+      .select('id, name')
       .eq('name', ZARPELLON_SUPPLIER_NAME)
       .maybeSingle();
 
-    if (existing) return existing.id;
+    if (existing) return existing;
 
     const { data: created, error } = await this.supabase
       .from('suppliers')
       .insert({ name: ZARPELLON_SUPPLIER_NAME })
-      .select('id')
+      .select('id, name')
       .single();
 
     if (error) {
@@ -582,7 +616,7 @@ export class PurchaseImportService {
       );
     }
 
-    return created.id;
+    return created;
   }
 
   // --------------------------------------------------------------------
