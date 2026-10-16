@@ -11,6 +11,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsDateString,
   IsInt,
   IsNumber,
   IsOptional,
@@ -37,6 +38,14 @@ export class CreatePurchaseDto {
   @IsInt()
   supplier_id: number;
 
+  /**
+   * Data real da compra ('YYYY-MM-DD'), pode ser retroativa. Sem ela, vale o
+   * padrão da coluna (hoje em Brasília).
+   */
+  @IsOptional()
+  @IsDateString({}, { message: 'Data da compra inválida (use AAAA-MM-DD)' })
+  purchase_date?: string;
+
   @IsOptional()
   @IsString()
   notes?: string;
@@ -47,6 +56,14 @@ export class CreatePurchaseDto {
   @Type(() => PurchaseItemDto)
   items: PurchaseItemDto[];
 }
+
+/**
+ * Campos do produto que a etiqueta usa (LabelContent e ZPL na UI): com eles
+ * a tela de etiquetas imprime a compra inteira, inclusive produtos inativos,
+ * que não vêm na lista de produtos dela.
+ */
+const LABEL_PRODUCT_FIELDS =
+  'id, name, sku, sku2, price, preco_promocional, label_text, is_active';
 
 @Injectable()
 export class PurchasesService {
@@ -71,6 +88,7 @@ export class PurchasesService {
         supplier_id: dto.supplier_id,
         total_amount: totalAmount,
         notes: dto.notes,
+        purchase_date: dto.purchase_date,
       })
       .select()
       .single();
@@ -140,7 +158,10 @@ export class PurchasesService {
             `,
         { count: 'exact' },
       )
-      .order('created_at', { ascending: false })
+      // Mais recente primeiro pela data real da compra (pode ser retroativa);
+      // o id desempata compras do mesmo dia.
+      .order('purchase_date', { ascending: false })
+      .order('id', { ascending: false })
       .range(from, to);
 
     if (error)
@@ -174,7 +195,7 @@ export class PurchasesService {
                 suppliers:supplier_id (name),
                 items:purchase_items (
                     *,
-                    products:product_id (name, sku)
+                    products:product_id (${LABEL_PRODUCT_FIELDS})
                 )
             `,
       )
