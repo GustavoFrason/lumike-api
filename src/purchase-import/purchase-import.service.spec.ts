@@ -192,6 +192,7 @@ describe('PurchaseImportService', () => {
             current_stock: 3,
             price: 40,
             is_active: true,
+            supplier_id: 2,
           },
         ],
         error: null,
@@ -207,6 +208,7 @@ describe('PurchaseImportService', () => {
         price: 40,
         sku2: 'EXIST1',
         sku2_alt: null,
+        supplier_id: 2,
         matched_by: 'sku2',
         match_count: 1,
       });
@@ -327,9 +329,9 @@ describe('PurchaseImportService', () => {
   });
 
   describe('confirm', () => {
-    it('resolve o fornecedor Zarpellon por nome e chama a RPC com o payload certo', async () => {
+    it('sem fornecedor escolhido, usa a Zarpellon e chama a RPC com o payload certo', async () => {
       mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: { id: 2 },
+        data: { id: 2, name: 'Zarpellon Joias' },
         error: null,
       }); // fornecedor já existe
       mockSupabase.rpc.mockResolvedValueOnce({ data: 42, error: null });
@@ -349,10 +351,12 @@ describe('PurchaseImportService', () => {
       });
 
       expect(result).toEqual({ purchase_id: 42, created: 1, updated: 1 });
+      expect(mockSupabase.eq).toHaveBeenCalledWith('name', 'Zarpellon Joias');
       expect(mockSupabase.rpc).toHaveBeenCalledWith(
         'fn_import_purchase_excel',
         expect.objectContaining({
           p_supplier_id: 2,
+          p_notes: 'Importação de planilha Excel - Zarpellon Joias',
           p_items: [
             expect.objectContaining({
               is_new: true,
@@ -420,6 +424,57 @@ describe('PurchaseImportService', () => {
         total_cost: 10,
         sku2_alt: null, // atualização não grava 2º código
       });
+    });
+
+    it('grava a compra e os produtos novos no fornecedor escolhido', async () => {
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: { id: 3, name: 'Alinare' },
+        error: null,
+      });
+      mockSupabase.rpc.mockResolvedValueOnce({ data: 44, error: null });
+
+      await service.confirm({
+        supplier_id: 3,
+        items: [
+          {
+            is_new: true,
+            sku2: '857109',
+            name: 'ANEL SOLITARIO',
+            quantity: 1,
+            unit_cost: 50,
+          },
+        ],
+      });
+
+      expect(mockSupabase.eq).toHaveBeenCalledWith('id', 3);
+      expect(mockSupabase.eq).not.toHaveBeenCalledWith(
+        'name',
+        'Zarpellon Joias',
+      );
+      expect(mockSupabase.rpc).toHaveBeenCalledWith(
+        'fn_import_purchase_excel',
+        expect.objectContaining({
+          p_supplier_id: 3,
+          p_notes: 'Importação de planilha Excel - Alinare',
+        }),
+      );
+    });
+
+    it('recusa fornecedor que não existe, sem gravar nada', async () => {
+      mockSupabase.maybeSingle.mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+
+      await expect(
+        service.confirm({
+          supplier_id: 999,
+          items: [{ is_new: false, product_id: 5, quantity: 1, unit_cost: 20 }],
+        }),
+      ).rejects.toThrow('Fornecedor não encontrado');
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(mockSupabase.insert).not.toHaveBeenCalled();
     });
 
     it('rejeita item novo sem sku2/name antes de chamar o banco', async () => {
