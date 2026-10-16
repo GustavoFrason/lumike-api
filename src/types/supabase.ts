@@ -820,6 +820,7 @@ export interface Database {
           supplier_id: number | null;
           total_amount: number;
           notes: string | null;
+          purchase_date: string;
           created_at: string;
           updated_at: string;
         };
@@ -828,6 +829,7 @@ export interface Database {
           supplier_id?: number | null;
           total_amount?: number;
           notes?: string | null;
+          purchase_date?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -836,6 +838,7 @@ export interface Database {
           supplier_id?: number | null;
           total_amount?: number;
           notes?: string | null;
+          purchase_date?: string;
           created_at?: string;
           updated_at?: string;
         };
