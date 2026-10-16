@@ -59,6 +59,7 @@ export class ProductsController {
       isActive: filters.is_active,
       search: filters.search,
       categoryId: filters.category_id,
+      collectionId: filters.colecao_id,
       isFeatured: filters.is_featured,
       sort: filters.sort,
       publicView: !isStaffRole(user?.role),

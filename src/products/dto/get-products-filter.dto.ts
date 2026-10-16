@@ -5,6 +5,7 @@ import {
   IsInt,
   Min,
   IsIn,
+  IsUUID,
 } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import type { ProductSort } from '../products.service';
@@ -47,6 +48,11 @@ export class GetProductsFilterDto {
   @Type(() => Number)
   @IsInt()
   category_id?: number;
+
+  /** Coleção (`colecoes.id`, UUID) — filtro da vitrine. */
+  @IsOptional()
+  @IsUUID()
+  colecao_id?: string;
 
   @IsOptional()
   @Transform(({ value }) => {

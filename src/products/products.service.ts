@@ -35,6 +35,7 @@ export interface FindProductsOptions {
   isActive?: boolean;
   search?: string;
   categoryId?: number;
+  collectionId?: string;
   isFeatured?: boolean;
   sort?: ProductSort;
   publicView?: boolean;
@@ -168,6 +169,7 @@ export class ProductsService {
       isActive,
       search,
       categoryId,
+      collectionId,
       isFeatured,
       publicView = false,
     } = options;
@@ -207,6 +209,10 @@ export class ProductsService {
 
     if (categoryId) {
       query = query.eq('category_id', categoryId);
+    }
+
+    if (collectionId) {
+      query = query.eq('colecao_id', collectionId);
     }
 
     const searchFilter = buildIlikeOr(

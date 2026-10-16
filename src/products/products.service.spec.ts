@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { BulkStatusDto } from './dto/bulk-status.dto';
+import { GetProductsFilterDto } from './dto/get-products-filter.dto';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import {
@@ -154,6 +155,30 @@ describe('ProductsService', () => {
         expect(mockSupabase.or).toHaveBeenCalledTimes(1);
         expect(mockSupabase.or).toHaveBeenCalledWith(
           'name.ilike."%a id.gt.0%",sku.ilike."%a id.gt.0%"',
+        );
+      });
+
+      it('filters by category and collection on the server', async () => {
+        const collectionId = '5f1c2b9e-8a7d-4c3b-9e2f-1a2b3c4d5e6f';
+        await service.findAll({
+          categoryId: 3,
+          collectionId,
+          publicView: true,
+        });
+
+        expect(mockSupabase.eq).toHaveBeenCalledWith('category_id', 3);
+        expect(mockSupabase.eq).toHaveBeenCalledWith(
+          'colecao_id',
+          collectionId,
+        );
+      });
+
+      it('does not filter by collection when none is given', async () => {
+        await service.findAll({ publicView: true });
+
+        expect(mockSupabase.eq).not.toHaveBeenCalledWith(
+          'colecao_id',
+          expect.anything(),
         );
       });
 
@@ -431,5 +456,20 @@ describe('BulkStatusDto', () => {
     );
     expect(await errorsFor({ is_active: true })).not.toHaveLength(0);
     expect(await errorsFor({ ids: [1], is_active: 'sim' })).not.toHaveLength(0);
+  });
+});
+
+describe('GetProductsFilterDto', () => {
+  const errorsFor = async (query: object) =>
+    validate(plainToInstance(GetProductsFilterDto, query));
+
+  it('accepts a collection UUID', async () => {
+    expect(
+      await errorsFor({ colecao_id: '5f1c2b9e-8a7d-4c3b-9e2f-1a2b3c4d5e6f' }),
+    ).toHaveLength(0);
+  });
+
+  it('rejects a collection id that is not a UUID', async () => {
+    expect(await errorsFor({ colecao_id: '12' })).not.toHaveLength(0);
   });
 });
